@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  /* Deep navy base with a single sky-blue accent. Deliberately not a tricolour
+     treatment — the site's identity must not read as official. */
+  --color-ink-950: #05080d;
+  --color-ink-900: #090e16;
+  --color-ink-850: #0d141d;
+  --color-ink-800: #131c27;
+  --color-ink-700: #1c2734;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Backdrop for the 3D viewport: a soft pool of light above a dark floor. */
+@utility bg-hangar {
+  background:
+    radial-gradient(120% 85% at 50% 0%, rgba(56, 132, 196, 0.22), transparent 62%),
+    radial-gradient(90% 60% at 50% 100%, rgba(8, 16, 26, 0.95), transparent 72%),
+    linear-gradient(180deg, #0b1220 0%, #06090f 100%);
+}
+
+/* Faint technical grid, used behind hero sections. */
+@utility bg-grid {
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Pool of accent light behind the hero, fading out at the edges. */
+@utility bg-glow {
+  background:
+    radial-gradient(60% 55% at 70% 12%, rgba(56, 189, 248, 0.16), transparent 70%),
+    radial-gradient(45% 45% at 12% 85%, rgba(14, 116, 190, 0.12), transparent 72%);
+}
+
+/* Hairline that fades away at both ends, for section rules. */
+@utility rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 179, 209, 0.22) 22%,
+    rgba(148, 179, 209, 0.22) 78%,
+    transparent
+  );
+}
+
+@utility text-gradient {
+  background: linear-gradient(180deg, #ffffff 20%, #9db4cc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: rgba(56, 189, 248, 0.28);
+  }
+
+  :focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

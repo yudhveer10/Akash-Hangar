@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "akash-hangar",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "akash-hangar-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4000", "--directory", "out"],
+      "port": 4000
+    }
+  ]
+}
