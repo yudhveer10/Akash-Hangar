@@ -11,6 +11,8 @@ import {
   getAllAircraft,
   resolveModel,
 } from "@/lib/aircraft";
+import { baseLocation, homeBaseOf } from "@/lib/bases";
+import type { Source } from "@/lib/types";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -47,13 +49,21 @@ export default async function AircraftPage({ params }: Params) {
 
   const { glbUrl } = resolveModel(entry);
   const adjacent = getAdjacent(entry.slug);
+  const base = homeBaseOf(entry);
 
   const headline = [
     { label: "Class", value: aircraftClass(entry) },
     { label: "In service", value: entry.inServiceSince },
     { label: "Crew", value: entry.specs.crew },
     { label: "Max speed", value: entry.specs.maxSpeed },
+    ...(base ? [{ label: "Home base", value: baseLocation(base) }] : []),
   ];
+
+  // The page states where the type flies from, so that station's sources belong in
+  // the same list as the aircraft's own.
+  const sources: Source[] = [...entry.sources, ...(base?.sources ?? [])].filter(
+    (source, i, all) => all.findIndex((other) => other.url === source.url) === i,
+  );
 
   return (
     <article>
@@ -132,7 +142,7 @@ export default async function AircraftPage({ params }: Params) {
               </p>
             </div>
 
-            <SourceList sources={entry.sources} />
+            <SourceList sources={sources} />
           </div>
         </div>
 

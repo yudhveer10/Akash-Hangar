@@ -12,6 +12,17 @@
 
 import * as THREE from "three";
 import { aircraft } from "../data/aircraft";
+import { bases } from "../data/bases";
+import { PRESETS } from "../components/three/environment/presets";
+import {
+  HEIGHT,
+  RUNWAY,
+  RUNWAY_END,
+  RUNWAY_HALF,
+  RUNWAY_START,
+  runwayMarkings,
+} from "../components/three/environment/layout";
+import { terrainGeometry, terrainHeight } from "../components/three/environment/terrain";
 import {
   fuselageGeometry,
   surfaceGeometry,
@@ -210,7 +221,162 @@ function checkSurface(slug: string, name: string, cfg: SurfaceConfig) {
   checkGeometry(`${slug} ${name}`, surfaceGeometry(cfg));
 }
 
-console.log(`Validating ${aircraft.length} airframes\n`);
+/**
+ * Stations carry facts about real places, so they are held to the same content rules
+ * as the aircraft: sourced, complete, and pointing at a landscape that exists.
+ */
+function checkBases() {
+  const ids = new Set<string>();
+
+  for (const base of bases) {
+    if (ids.has(base.id)) fail(`base ${base.id}: duplicate id`);
+    ids.add(base.id);
+
+    if (base.sources.length === 0) fail(`base ${base.id}: no sources cited`);
+    else pass();
+
+    if (!base.station || !base.short || !base.city || !base.state)
+      fail(`base ${base.id}: station, short name, city and state are all required`);
+    else pass();
+
+    if (base.note.trim().length < 40) fail(`base ${base.id}: note is too thin to be useful`);
+    else pass();
+
+    if (!PRESETS[base.terrain]) fail(`base ${base.id}: no scene preset for "${base.terrain}"`);
+    else pass();
+  }
+
+  for (const entry of aircraft) {
+    if (entry.category !== "iaf") continue;
+    if (!entry.homeBase) {
+      fail(`${entry.slug}: no home base recorded`);
+    } else if (!ids.has(entry.homeBase)) {
+      fail(`${entry.slug}: home base "${entry.homeBase}" is not in data/bases.ts`);
+    } else {
+      pass();
+    }
+  }
+}
+
+/**
+ * The airfield scenery has the same failure mode as the airframes and is even harder
+ * to spot: a ground sheet wound the wrong way is lit from underneath and reads as a
+ * dark hole, and terrain that creeps above zero anywhere along the strip either
+ * swallows the runway or leaves it floating. Neither is a type error, so both are
+ * checked here.
+ */
+function checkEnvironment() {
+  for (const [id, preset] of Object.entries(PRESETS)) {
+    const spec = preset.terrain;
+
+    // Coarse mesh: winding and finiteness do not depend on the resolution.
+    const geometry = terrainGeometry(spec, 26, 48);
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+
+    let bad = 0;
+    let flipped = 0;
+    for (let i = 0; i < position.count; i++) {
+      if (
+        !Number.isFinite(position.getX(i)) ||
+        !Number.isFinite(position.getY(i)) ||
+        !Number.isFinite(position.getZ(i))
+      ) {
+        bad++;
+      }
+      if (normal.getY(i) <= 0) flipped++;
+    }
+    if (bad > 0) fail(`terrain ${id}: ${bad} non-finite vertices`);
+    else pass();
+
+    if (flipped > 0)
+      fail(`terrain ${id}: ${flipped} vertices face downward — the sheet is inside-out`);
+    else pass();
+
+    // The runway and its shoulders must sit on dead-flat ground.
+    const edge = RUNWAY_HALF + RUNWAY.shoulder;
+    let worst = 0;
+    for (let z = RUNWAY_START; z <= RUNWAY_END; z += 40) {
+      for (const x of [-edge, -RUNWAY_HALF, 0, RUNWAY_HALF, edge]) {
+        worst = Math.max(worst, Math.abs(terrainHeight(spec, x, z)));
+      }
+    }
+    if (worst > 0.001)
+      fail(`terrain ${id}: ground moves ${worst.toFixed(2)} m under the runway`);
+    else pass();
+
+    // So must the apron, or a hillside preset grows through the hangars.
+    let apron = 0;
+    for (let x = spec.pad.minX; x <= spec.pad.maxX; x += 25) {
+      for (let z = spec.pad.minZ; z <= spec.pad.maxZ; z += 25) {
+        apron = Math.max(apron, Math.abs(terrainHeight(spec, x, z)));
+      }
+    }
+    if (apron > 0.001)
+      fail(`terrain ${id}: ground moves ${apron.toFixed(2)} m under the apron`);
+    else pass();
+
+    // And relief has to actually arrive once clear of it, or the setting is a void.
+    let relief = 0;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+      const r = spec.radius * 0.45;
+      relief = Math.max(relief, terrainHeight(spec, Math.cos(a) * r, Math.sin(a) * r));
+    }
+    if (relief < spec.amplitude * 0.1)
+      fail(`terrain ${id}: no relief within the disc (highest sample ${relief.toFixed(1)} m)`);
+    else pass();
+  }
+}
+
+/**
+ * Two airfield surfaces at the same height do not pick a winner at this scale — the
+ * depth buffer runs out to 4 km and resolves barely a centimetre at 300 m, so they
+ * tear into stripes that crawl as the camera orbits. That shipped once, from the
+ * ground plane and the runway slab both sitting at zero. Heights are now declared in
+ * one place and checked for collisions here.
+ */
+function checkAirfield() {
+  const levels = Object.entries(HEIGHT);
+  for (let i = 0; i < levels.length; i++) {
+    for (let j = i + 1; j < levels.length; j++) {
+      if (Math.abs(levels[i][1] - levels[j][1]) < 0.005) {
+        fail(
+          `airfield: ${levels[i][0]} and ${levels[j][0]} are at the same height — they will z-fight`,
+        );
+      } else {
+        pass();
+      }
+    }
+  }
+
+  // Markings are painted into the runway texture, so anything off the slab is
+  // silently cropped rather than visibly wrong.
+  for (const mark of runwayMarkings()) {
+    const offSide = Math.abs(mark.x) + mark.w / 2 > RUNWAY_HALF + 1e-6;
+    const offEnd =
+      mark.z - mark.l / 2 < RUNWAY_START - 1e-6 || mark.z + mark.l / 2 > RUNWAY_END + 1e-6;
+    if (offSide || offEnd) {
+      fail(
+        `airfield: a marking at [${mark.x}, ${mark.z}] falls outside the paved surface`,
+      );
+    } else {
+      pass();
+    }
+  }
+
+  if (RUNWAY.threshold <= RUNWAY_START || RUNWAY.threshold >= RUNWAY_END)
+    fail("airfield: the threshold is not on the runway");
+  else pass();
+}
+
+console.log(
+  `Validating ${aircraft.length} airframes, ${bases.length} stations and ${Object.keys(PRESETS).length} settings\n`,
+);
+
+checkAirfield();
+
+checkBases();
+checkEnvironment();
 
 for (const entry of aircraft) {
   const g = entry.geometry;

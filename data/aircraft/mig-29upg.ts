@@ -10,6 +10,7 @@ export const mig29upg: Aircraft = {
   inServiceSince: "1987 (UPG upgrade from 2012)",
   serviceNote:
     "Known in Indian service as the Baaz. The UPG programme added aerial refuelling, new radar and an upgraded avionics suite.",
+  homeBase: "adampur",
   specs: {
     length: "17.37 m",
     wingspan: "11.40 m",

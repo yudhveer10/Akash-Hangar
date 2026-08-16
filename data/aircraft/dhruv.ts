@@ -10,6 +10,7 @@ export const dhruv: Aircraft = {
   inServiceSince: "2002",
   serviceNote:
     "Flown by the Sarang helicopter display team, and used across all three Indian armed services.",
+  homeBase: "sulur",
   specs: {
     length: "15.87 m",
     wingspan: "13.20 m main rotor diameter",

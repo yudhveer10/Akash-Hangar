@@ -10,6 +10,7 @@ export const su30mki: Aircraft = {
   inServiceSince: "2002",
   serviceNote:
     "The numerical backbone of the fighter fleet, assembled in India by HAL at Nashik.",
+  homeBase: "lohegaon",
   specs: {
     length: "21.94 m",
     wingspan: "14.70 m",

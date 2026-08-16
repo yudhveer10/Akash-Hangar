@@ -10,6 +10,7 @@ export const chinook: Aircraft = {
   inServiceSince: "2019",
   serviceNote:
     "Inducted at Chandigarh in March 2019, with a second unit at Mohanbari.",
+  homeBase: "chandigarh",
   specs: {
     length: "30.10 m with rotors turning (15.87 m fuselage)",
     wingspan: "18.29 m rotor diameter, each rotor",

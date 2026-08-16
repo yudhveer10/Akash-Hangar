@@ -10,6 +10,7 @@ export const prachand: Aircraft = {
   inServiceSince: "2022",
   serviceNote:
     "Formally inducted at Jodhpur in October 2022. Prachand means 'fierce' or 'severe'.",
+  homeBase: "jodhpur",
   specs: {
     length: "15.80 m",
     wingspan: "13.30 m main rotor diameter",

@@ -10,6 +10,7 @@ export const mirage2000: Aircraft = {
   inServiceSince: "1985",
   serviceNote:
     "Named Vajra in Indian service. The fleet was upgraded to the Mirage 2000I/TI standard from 2011.",
+  homeBase: "gwalior",
   specs: {
     length: "14.36 m",
     wingspan: "9.13 m",

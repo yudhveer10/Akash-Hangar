@@ -10,6 +10,7 @@ export const c17: Aircraft = {
   inServiceSince: "2013",
   serviceNote:
     "Operated by No. 81 Squadron, the 'Skylords', from Hindan. India is the largest operator outside the United States.",
+  homeBase: "hindan",
   specs: {
     length: "53.04 m",
     wingspan: "51.74 m",

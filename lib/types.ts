@@ -35,6 +35,45 @@ export interface Annotation {
   position: [x: number, y: number, z: number];
 }
 
+/* ------------------------------------------------------------------ */
+/* Airfield settings                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The landscape a station sits in. This is what the viewer's outdoor scene is built
+ * from — the runway is the same everywhere, the country around it is not.
+ */
+export type TerrainId =
+  | "himalayan"
+  | "foothills"
+  | "plains"
+  | "desert"
+  | "coastal"
+  | "hills";
+
+/**
+ * An Air Force station the viewer can stand an aircraft on.
+ *
+ * Station locations and the units at them are published information, so they follow
+ * the same rule as every other fact on the site: each entry carries its own sources,
+ * and anything that could not be sourced is left out rather than estimated.
+ */
+export interface AirBase {
+  id: string;
+  /** Station name as published. */
+  station: string;
+  /** What the field is called in one word — the name in the viewer's picker. */
+  short: string;
+  city: string;
+  state: string;
+  /** Field elevation, quoted with units. Omitted where no figure could be sourced. */
+  elevation?: string;
+  terrain: TerrainId;
+  /** One sentence of public context: the unit based there, or what the field is known for. */
+  note: string;
+  sources: Source[];
+}
+
 export interface Specs {
   length: string;
   wingspan: string;
@@ -263,6 +302,12 @@ export interface Aircraft {
   inServiceSince: string;
   /** Optional IAF-specific note: squadron, local name, induction detail. */
   serviceNote?: string;
+  /**
+   * Id of the station the type is publicly associated with, from `data/bases.ts`.
+   * Sets the viewer's default setting; visitors can move the aircraft to any other
+   * station from there.
+   */
+  homeBase?: string;
   specs: Specs;
   /** Two to four paragraphs, public sources only. */
   description: string[];

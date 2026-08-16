@@ -10,6 +10,7 @@ export const tejas: Aircraft = {
   inServiceSince: "2016",
   serviceNote:
     "First delivered to No. 45 Squadron, the 'Flying Daggers', in July 2016.",
+  homeBase: "sulur",
   specs: {
     length: "13.20 m",
     wingspan: "8.20 m",

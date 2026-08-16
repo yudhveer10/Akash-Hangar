@@ -80,9 +80,11 @@ models are authored in metres at real scale. The viewer frames them automaticall
 ```
 app/                 routes; layout.tsx renders header + footer (disclaimer)
 components/three/    Canvas, scene, viewer chrome, procedural geometry
+  environment/       the outdoor setting: runway, terrain, sky, airfield buildings
 components/ui/       cards, spec table, nav, footer, disclaimer
 data/aircraft/       one typed file per aircraft, re-exported from index.ts
-lib/                 types.ts (schema), aircraft.ts (server-side data access)
+data/bases.ts        Air Force stations, with sources
+lib/                 types.ts (schema), aircraft.ts (server-side), bases.ts (station lookups)
 public/models/       optional .glb overrides, keyed by slug
 ```
 
@@ -143,6 +145,64 @@ them by switching back to fractions.
 
 Serials are representative of each type's real series rather than specific airframes.
 
+## Airfield settings
+
+The viewer can stand an aircraft on a runway instead of in the studio hangar. Each
+aircraft names a `homeBase` — the station it opens at — and the picker in the viewer
+can move it to any other station in `data/bases.ts`.
+
+Everything is generated, like the airframes:
+
+- `layout.ts` — the dimensions everything else agrees on. A 45 m runway with 7.5 m
+  shoulders, threshold at z = −170, so the aircraft stands on the centreline a little
+  way down it with the piano keys behind and 2.4 km of runway ahead.
+- `noise.ts` / `terrain.ts` — the ground. A height function plus a polar mesh with
+  geometrically spaced rings: dense underfoot, coarse at the horizon. Two masks shape
+  it — the **strip mask** holds the ground flat along the runway, and **growth** makes
+  relief taller with distance so a valley reads as near walls with ranges behind.
+  Colour is a vertex attribute derived from height and slope, the same technique the
+  liveries use.
+- `Runway.tsx` — pavement and lights. Markings are the international standard set,
+  which is what makes a grey strip read as a runway.
+- `textures.ts` — the sky, painted into an equirectangular canvas with its sun always
+  at u = 0.5 and then *rotated* into place, plus the asphalt maps. The sky doubles as
+  the scene's environment map, which is most of why the aircraft looks like it is
+  really outside.
+- `presets.ts` — the six landscapes (`himalayan`, `foothills`, `plains`, `desert`,
+  `coastal`, `hills`) with their light, air and palette.
+- `Airfield.tsx` — tower, hangars, windsock. Generic structures for scale, with no
+  insignia or signage: the branding rule applies here too.
+
+**Nothing may share a height with anything it overlaps.** Every surface takes its
+level from `HEIGHT` in `layout.ts` — ground below shoulders below taxiway below
+runway. The scene is 2.4 km long against a depth buffer that reaches 4 km, which
+resolves about a centimetre at 300 m and half a metre at the far threshold, so two
+coplanar surfaces do not pick a winner: they tear into stripes that crawl as the
+camera orbits. That shipped once, from the ground plane and the runway slab both
+sitting at zero.
+
+The same arithmetic is why the runway's **markings are baked into its texture**
+rather than floated above it as geometry, the way a decal would be at close range.
+Baked, there is nothing to fight, and the paint mipmaps — thin white lines fade into
+the distance instead of crawling, which matters with `antialias: false` on the canvas.
+`npm run validate` checks the heights for collisions and the markings for fitting on
+the slab.
+
+**No runway designator is painted.** The number depends on a real field's magnetic
+heading, and inventing one would be inventing a fact about a real station. The
+markings that are painted are identical at every airfield in the world, so they claim
+nothing.
+
+**Stations are content, not decoration.** A base carries a city, a state, a note and
+its own `sources`, and is held to the sourcing rule like everything else — the viewer
+renders the station's sources next to it, and the aircraft page merges its home base's
+sources into the page list. `terrain` is the one editorial field: it is a broad-brush
+description of the country a field sits in, not a survey of it. Moving an aircraft to
+a station it does not fly from is labelled as a setting, in as many words.
+
+To add a station: append to `data/bases.ts` with at least one source and a terrain
+that already exists, then `npm run validate`.
+
 ## Annotations
 
 Each aircraft carries an `annotations` array — labelled points pinned to coordinates on
@@ -156,6 +216,13 @@ the signed volume of every lofted part (positive means the triangles face outwar
 checks each model's dimensions against the published figures in its own data file. It
 also enforces the content rules above: sources present, description long enough,
 animations declared.
+
+It covers the airfield too, which has the same failure mode and worse symptoms: that
+the ground faces upward, that it is dead flat under the whole length of the runway and
+its shoulders (terrain creeping above zero swallows the runway; sagging below it
+leaves the far end in mid-air — a real bug this check caught), that relief actually
+arrives once clear of the strip, and that every station is sourced and points at a
+landscape that exists.
 
 ## Status
 

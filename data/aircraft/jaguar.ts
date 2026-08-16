@@ -10,6 +10,7 @@ export const jaguar: Aircraft = {
   inServiceSince: "1979",
   serviceNote:
     "Named Shamsher in Indian service. India is the last operator of the type still flying it in frontline squadrons.",
+  homeBase: "jamnagar",
   specs: {
     length: "16.83 m",
     wingspan: "8.69 m",

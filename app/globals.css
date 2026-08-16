@@ -58,6 +58,18 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* The site is dark all the way through, and the browser has to be told: without
+       this it paints its own furniture for a light page — a white scrollbar, and a
+       white <select> popup that renders our light option text invisible. */
+    color-scheme: dark;
+  }
+
+  /* Chrome draws the popup itself, so the options need their colours stated rather
+     than inherited from the control. */
+  option,
+  optgroup {
+    background-color: var(--color-ink-850);
+    color: #e2e8f0;
   }
 
   body {

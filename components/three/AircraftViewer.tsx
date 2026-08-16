@@ -6,11 +6,13 @@ import { Bounds, OrbitControls, useBounds, useProgress } from "@react-three/drei
 import * as THREE from "three";
 import type { Aircraft, AnimationId } from "@/lib/types";
 import { modelExtent } from "@/lib/geometry";
+import { baseLocation, getAllBases, getBaseById } from "@/lib/bases";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { FixedWing } from "./geometry/FixedWing";
 import { Rotorcraft } from "./geometry/Rotorcraft";
 import { GlbAircraft } from "./GlbAircraft";
 import { Annotations } from "./Annotations";
+import { BaseEnvironment } from "./environment/BaseEnvironment";
 import { GroundShadow, Grounded, HangarFloor, HangarLighting, PostFX } from "./Scene";
 import { ANIMATION_LABELS, IDLE, type AnimationState } from "./geometry/animation";
 
@@ -26,6 +28,8 @@ function ResetOnSignal({ signal }: { signal: number }) {
 const ON = "border-sky-400/60 bg-sky-400/15 text-sky-200 shadow-[0_0_16px_-6px_rgba(56,189,248,0.9)]";
 const OFF =
   "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25 hover:text-white";
+
+const HANGAR = "hangar";
 
 /** HUD-style corner brackets around the viewport. */
 function Brackets() {
@@ -52,6 +56,12 @@ export function AircraftViewer({
   const [partsOn, setPartsOn] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const { active, progress } = useProgress();
+
+  // The aircraft opens on its own station and can be moved to any other. `hangar`
+  // is the studio backdrop the site started with, kept as a neutral option.
+  const stations = getAllBases();
+  const [setting, setSetting] = useState(() => aircraft.homeBase ?? HANGAR);
+  const base = getBaseById(setting);
 
   // The turntable follows the OS motion preference until the visitor overrides it.
   const reducedMotion = usePrefersReducedMotion();
@@ -85,7 +95,7 @@ export function AircraftViewer({
               </div>
             }
           >
-            <HangarLighting />
+            {base ? <BaseEnvironment terrain={base.terrain} /> : <HangarLighting />}
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.28}>
                 <ResetOnSignal signal={resetSignal} />
@@ -107,8 +117,8 @@ export function AircraftViewer({
                 </Grounded>
               </Bounds>
             </Suspense>
-            <HangarFloor radius={extent / 2} />
-            <GroundShadow radius={extent / 2} />
+            {!base && <HangarFloor radius={extent / 2} />}
+            <GroundShadow radius={extent / 2} opacity={base ? 0.4 : 0.72} />
             <OrbitControls
               makeDefault
               enableDamping
@@ -146,6 +156,18 @@ export function AircraftViewer({
           <p className="pointer-events-none absolute bottom-4 left-6 font-mono text-[10px] uppercase tracking-wider text-slate-500">
             Drag to orbit · scroll to zoom
           </p>
+
+          {base && (
+            <div className="pointer-events-none absolute bottom-4 right-6 text-right">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-sky-300/75">
+                {base.station}
+              </p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">
+                {baseLocation(base)}
+                {base.elevation ? ` · ${base.elevation}` : ""}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -167,6 +189,25 @@ export function AircraftViewer({
           })}
 
           <div className="ml-auto flex gap-2">
+            <select
+              value={setting}
+              onChange={(event) => setSetting(event.target.value)}
+              aria-label="Setting"
+              style={{ colorScheme: "dark" }}
+              className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 font-mono text-xs uppercase tracking-wider text-slate-300 transition-colors hover:border-white/25 hover:text-white"
+            >
+              <optgroup label="Air Force stations">
+                {stations.map((station) => (
+                  <option key={station.id} value={station.id}>
+                    {station.short}
+                    {station.id === aircraft.homeBase ? " · home" : ""}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Studio">
+                <option value={HANGAR}>Hangar</option>
+              </optgroup>
+            </select>
             <button
               type="button"
               onClick={() => setAutoRotateOverride(!autoRotate)}
@@ -186,6 +227,32 @@ export function AircraftViewer({
             </button>
           </div>
         </div>
+
+        {base && (
+          <p className="text-xs leading-relaxed text-slate-500">
+            {base.note}
+            {base.id !== aircraft.homeBase && (
+              <span className="text-slate-600">
+                {" "}
+                Shown here as a setting — the {aircraft.shortName} is not based at this
+                station.
+              </span>
+            )}{" "}
+            {base.sources.map((source, i) => (
+              <span key={source.url}>
+                {i > 0 && <span className="text-slate-700"> · </span>}
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whitespace-nowrap underline decoration-white/20 underline-offset-4 transition-colors hover:text-sky-300 hover:decoration-sky-400/50"
+                >
+                  {i === 0 ? "Source" : `Source ${i + 1}`}
+                </a>
+              </span>
+            ))}
+          </p>
+        )}
       </div>
 
       {/* Parts panel. Markers on the model and rows here drive the same selection. */}

@@ -10,6 +10,7 @@ export const rafale: Aircraft = {
   inServiceSince: "2020",
   serviceNote:
     "Inducted into No. 17 Squadron, the 'Golden Arrows', at Ambala in September 2020.",
+  homeBase: "ambala",
   specs: {
     length: "15.27 m",
     wingspan: "10.90 m",

@@ -10,6 +10,7 @@ export const apache: Aircraft = {
   inServiceSince: "2019",
   serviceNote:
     "First aircraft handed over in 2019 and inducted at Pathankot, with the fleet later based at Jorhat as well.",
+  homeBase: "pathankot",
   specs: {
     length: "17.73 m",
     wingspan: "14.63 m main rotor diameter",

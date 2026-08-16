@@ -99,12 +99,16 @@ export function HangarFloor({ radius }: { radius: number }) {
   );
 }
 
-/** Soft shadow pad under the aircraft. Sized by the caller to the model's span. */
-export function GroundShadow({ radius }: { radius: number }) {
+/**
+ * Soft shadow pad under the aircraft. Sized by the caller to the model's span.
+ * Outdoors the sun already casts a real shadow, so this is dialled back to the
+ * contact darkening under the wheels rather than the whole shadow.
+ */
+export function GroundShadow({ radius, opacity = 0.72 }: { radius: number; opacity?: number }) {
   return (
     <ContactShadows
       position={[0, 0.015, 0]}
-      opacity={0.72}
+      opacity={opacity}
       scale={radius * 2.8}
       blur={2.2}
       far={radius}
@@ -145,10 +149,20 @@ export function Grounded({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     if (!outer.current || !inner.current) return;
+
+    // `Box3.setFromObject` measures in world space, so it has to be taken with the
+    // correction removed. Measuring with the lift already applied reads the aircraft
+    // as sitting exactly on zero, sets the offset back to nothing, and drops it
+    // through the runway — which is what happened every time a button re-rendered.
+    outer.current.position.y = 0;
+    outer.current.updateWorldMatrix(true, false);
+
     const box = new THREE.Box3().setFromObject(inner.current);
     if (box.isEmpty()) return;
     outer.current.position.y = -box.min.y;
-  });
+    // Once only, in the default gear-down state: the aircraft must not hop when the
+    // gear comes up or the afterburner lights.
+  }, []);
 
   return (
     <group ref={outer}>

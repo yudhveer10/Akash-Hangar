@@ -10,6 +10,7 @@ export const c130j: Aircraft = {
   inServiceSince: "2011",
   serviceNote:
     "Indian aircraft are the stretched C-130J-30, configured for special operations and operated from Hindan and Panagarh.",
+  homeBase: "panagarh",
   specs: {
     length: "34.37 m",
     wingspan: "40.41 m",
