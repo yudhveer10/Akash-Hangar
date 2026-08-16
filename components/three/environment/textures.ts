@@ -72,25 +72,62 @@ export interface SkyPalette {
   sun: { azimuth: number; elevation: number; colour: string };
   /** 0 = cloudless, 1 = a busy monsoon sky. */
   clouds: number;
+  /** 0 = daylight, 1 = a full night sky. Absent on the daylight landscapes. */
+  stars?: number;
+  /** Sodium light thrown back off the air over a city. */
+  glow?: { colour: string; strength: number };
 }
 
 const SKY_W = 2048;
 const SKY_H = 1024;
 
+/**
+ * Skies are per station and per time of day, so there are dozens of them and each is
+ * eight megabytes before mipmaps. They are kept in a small most-recently-used cache
+ * and the rest are disposed: switching back to somewhere you were just looking is
+ * free, and wandering the whole list does not accumulate a few hundred megabytes of
+ * texture. The entry just requested is always the newest, so it is never the one
+ * evicted out from under the renderer.
+ */
+const SKY_CACHE_SIZE = 4;
 const skyCache = new Map<string, THREE.CanvasTexture>();
+
+function remember(key: string, texture: THREE.CanvasTexture) {
+  skyCache.set(key, texture);
+  while (skyCache.size > SKY_CACHE_SIZE) {
+    const oldest = skyCache.keys().next();
+    if (oldest.done) break;
+    skyCache.get(oldest.value)?.dispose();
+    skyCache.delete(oldest.value);
+  }
+}
 
 /**
  * An equirectangular sky, painted so that the sun sits at u = 0.5. The dome is then
  * rotated to put it in the right place, which keeps the drawing code free of any
  * spherical mapping maths.
+ *
+ * `seed` is the station's, so its cloud and star patterns are its own — two fields
+ * sharing a landscape and a time of day still do not share a sky.
  */
-export function skyTexture(key: string, palette: SkyPalette): THREE.CanvasTexture | null {
+export function skyTexture(
+  key: string,
+  palette: SkyPalette,
+  seed0 = 4711,
+): THREE.CanvasTexture | null {
   if (typeof document === "undefined") return null;
+
   const hit = skyCache.get(key);
-  if (hit) return hit;
+  if (hit) {
+    // Re-inserting moves it to the newest end of the map.
+    skyCache.delete(key);
+    skyCache.set(key, hit);
+    return hit;
+  }
 
   const { el, ctx } = canvas2d(SKY_W, SKY_H);
   const horizonY = SKY_H / 2;
+  const stars = palette.stars ?? 0;
 
   // v = 1 at the top of the image is straight up; the middle row is the horizon.
   const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -106,14 +143,44 @@ export function skyTexture(key: string, palette: SkyPalette): THREE.CanvasTextur
   ctx.fillStyle = ground;
   ctx.fillRect(0, horizonY - 1, SKY_W, SKY_H - horizonY + 1);
 
+  let seed = (seed0 * 2654435761 + 4711) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 0xffffffff;
+  };
+
+  // Stars, thickest overhead and thinning into the haze at the horizon.
+  if (stars > 0) {
+    const count = Math.round(stars * 1400);
+    for (let i = 0; i < count; i++) {
+      const x = rand() * SKY_W;
+      const height = Math.pow(rand(), 0.6);
+      const y = horizonY * (1 - height);
+      const size = 0.5 + Math.pow(rand(), 3) * 1.9;
+      const alpha = stars * (0.18 + rand() * 0.82) * (0.25 + height * 0.75);
+      ctx.fillStyle = `rgba(255,251,240,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // A city throws its light back off the air: a warm band hugging the horizon.
+  if (palette.glow) {
+    const height = horizonY * 0.26;
+    const g = ctx.createLinearGradient(0, horizonY, 0, horizonY - height);
+    g.addColorStop(0, hexToRgba(palette.glow.colour, 0.55 * palette.glow.strength));
+    g.addColorStop(0.35, hexToRgba(palette.glow.colour, 0.2 * palette.glow.strength));
+    g.addColorStop(1, hexToRgba(palette.glow.colour, 0));
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = g;
+    ctx.fillRect(0, horizonY - height, SKY_W, height);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   // Clouds: soft flattened blobs stacked into a band above the horizon, drawn three
   // times so the band wraps cleanly at the seam.
   if (palette.clouds > 0) {
-    let seed = 4711;
-    const rand = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 0xffffffff;
-    };
     const count = Math.round(palette.clouds * 90);
     for (let i = 0; i < count; i++) {
       const cx = rand() * SKY_W;
@@ -121,11 +188,14 @@ export function skyTexture(key: string, palette: SkyPalette): THREE.CanvasTextur
       const rx = 60 + rand() * 240;
       const ry = rx * (0.16 + rand() * 0.22);
       const alpha = 0.1 + rand() * 0.4 * palette.clouds;
+      // After dark a cloud is a hole in the stars, not a white blob, so it takes the
+      // colour of the sky it sits in.
+      const tint = mixHex("#ffffff", palette.horizon, stars);
       for (const dx of [-SKY_W, 0, SKY_W]) {
         const g = ctx.createRadialGradient(cx + dx, cy, 0, cx + dx, cy, rx);
-        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-        g.addColorStop(0.5, `rgba(250,252,255,${alpha * 0.5})`);
-        g.addColorStop(1, "rgba(255,255,255,0)");
+        g.addColorStop(0, hexToRgba(tint, alpha));
+        g.addColorStop(0.5, hexToRgba(tint, alpha * 0.5));
+        g.addColorStop(1, hexToRgba(tint, 0));
         ctx.save();
         ctx.translate(cx + dx, cy);
         ctx.scale(1, ry / rx);
@@ -137,26 +207,31 @@ export function skyTexture(key: string, palette: SkyPalette): THREE.CanvasTextur
     }
   }
 
-  // Sun, with its glow. Painted last so it sits in front of the cloud band.
+  // Sun, with its glow. Painted last so it sits in front of the cloud band. The moon
+  // gets a far tighter halo — a night sky washed out to the horizon reads as fog.
+  const night = stars > 0.5;
   const sunY = (0.5 - palette.sun.elevation / 180) * SKY_H;
   const sunX = SKY_W / 2;
-  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, SKY_H * 0.42);
-  glow.addColorStop(0, hexToRgba(palette.sun.colour, 0.95));
-  glow.addColorStop(0.06, hexToRgba(palette.sun.colour, 0.5));
-  glow.addColorStop(0.3, hexToRgba(palette.sun.colour, 0.12));
+  const reach = SKY_H * (night ? 0.1 : 0.42);
+  const strength = night ? 0.5 : 1;
+
+  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, reach);
+  glow.addColorStop(0, hexToRgba(palette.sun.colour, 0.95 * strength));
+  glow.addColorStop(0.06, hexToRgba(palette.sun.colour, 0.5 * strength));
+  glow.addColorStop(0.3, hexToRgba(palette.sun.colour, 0.12 * strength));
   glow.addColorStop(1, hexToRgba(palette.sun.colour, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, SKY_W, SKY_H);
 
   ctx.beginPath();
-  ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
+  ctx.arc(sunX, sunY, night ? 11 : 16, 0, Math.PI * 2);
+  ctx.fillStyle = night ? "#f4f6ff" : "#ffffff";
   ctx.fill();
 
   const texture = new THREE.CanvasTexture(el);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.mapping = THREE.EquirectangularReflectionMapping;
-  skyCache.set(key, texture);
+  remember(key, texture);
   return texture;
 }
 

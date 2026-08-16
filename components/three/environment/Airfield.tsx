@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import * as THREE from "three";
 import { APRON_CENTRE_X, HEIGHT, RUNWAY, RUNWAY_HALF, TAXIWAY } from "./layout";
-import type { ScenePreset } from "./presets";
+import { valueNoise } from "./noise";
+import type { ScenePreset } from "./scene";
 
 /**
  * Buildings and airfield furniture.
@@ -17,10 +19,12 @@ const APRON_X = APRON_CENTRE_X;
 
 function Hangar({
   position,
+  lit,
   width = 46,
   depth = 30,
 }: {
   position: [number, number, number];
+  lit: number;
   width?: number;
   depth?: number;
 }) {
@@ -41,27 +45,35 @@ function Hangar({
         <cylinderGeometry args={[depth / 2, depth / 2, width, 20, 1, false, 0, Math.PI]} />
         <meshStandardMaterial color="#7c828a" roughness={0.7} metalness={0.25} />
       </mesh>
-      {/* Door slot in the face toward the apron. */}
+      {/* Door slot in the face toward the apron, with the hangar lights behind it. */}
       <mesh position={[0, wall * 0.52, depth / 2 + 0.1]}>
         <boxGeometry args={[width * 0.68, wall * 0.9, 0.3]} />
-        <meshStandardMaterial color="#2b3037" roughness={0.9} />
+        <meshStandardMaterial
+          color="#2b3037"
+          emissive="#ffd9a0"
+          emissiveIntensity={lit * 0.45}
+          roughness={0.9}
+        />
       </mesh>
     </group>
   );
 }
 
-function ControlTower({ position }: { position: [number, number, number] }) {
+function ControlTower({ position, lit }: { position: [number, number, number]; lit: number }) {
   return (
     <group position={position}>
       <mesh position={[0, 11, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[3.4, 4.6, 22, 12]} />
         <meshStandardMaterial color="#767b82" roughness={0.85} />
       </mesh>
-      {/* Glazed cab, canted out over the field the way they always are. */}
+      {/* Glazed cab, canted out over the field the way they always are. Lit from
+          inside once the sun is down — a tower cab is never dark. */}
       <mesh position={[0, 24, 0]} castShadow>
         <cylinderGeometry args={[7.4, 5.6, 4.4, 12]} />
         <meshStandardMaterial
           color="#1b2733"
+          emissive="#7fd4b0"
+          emissiveIntensity={lit * 0.5}
           roughness={0.16}
           metalness={0.65}
           envMapIntensity={1.4}
@@ -96,20 +108,81 @@ function Windsock({ position }: { position: [number, number, number] }) {
   );
 }
 
+/**
+ * The city beyond the boundary, for a field that has one.
+ *
+ * Blocks of flats and offices in a broad arc well clear of the approach, generic in
+ * exactly the way the airfield's own buildings are. At night their windows carry most
+ * of the light in the scene, which is what an urban field actually looks like from
+ * the ground: a dark apron under an orange sky.
+ */
+function City({ lit }: { lit: number }) {
+  const mesh = useMemo(() => {
+    const blocks: { x: number; z: number; w: number; d: number; h: number }[] = [];
+
+    for (let i = 0; i < 460; i++) {
+      const angle = valueNoise(i * 1.31, 0.5, 613) * Math.PI * 2;
+      const distance = 900 + Math.pow(valueNoise(0.5, i * 1.17, 941), 0.7) * 1500;
+      const x = Math.cos(angle) * distance;
+      const z = Math.sin(angle) * distance * 1.35;
+
+      // Nothing is built across the approach or the departure end.
+      if (Math.abs(x) < 620 && z > -1400 && z < 2900) continue;
+
+      const w = 16 + valueNoise(i * 2.7, 1.5, 271) * 34;
+      blocks.push({
+        x,
+        z,
+        w,
+        d: w * (0.6 + valueNoise(i * 0.7, 3.3, 337) * 0.9),
+        h: 10 + Math.pow(valueNoise(i * 1.9, 7.1, 457), 2.2) * 62,
+      });
+    }
+
+    const instances = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({
+        color: "#5d6068",
+        emissive: "#ffb861",
+        emissiveIntensity: lit * 0.5,
+        roughness: 0.9,
+      }),
+      blocks.length,
+    );
+
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const size = new THREE.Vector3();
+    blocks.forEach((b, i) => {
+      position.set(b.x, b.h / 2, b.z);
+      size.set(b.w, b.h, b.d);
+      instances.setMatrixAt(i, matrix.compose(position, quaternion, size));
+    });
+    instances.computeBoundingSphere();
+    return instances;
+  }, [lit]);
+
+  return <primitive object={mesh} />;
+}
+
 export function Airfield({ preset }: { preset: ScenePreset }) {
   const minimal = preset.buildings === "minimal";
+  // How hard the building lighting burns. Nothing is lit in daylight.
+  const lit = Math.max(0, preset.lamps - 0.5);
 
   // Planted at ground level rather than at the pavement's, so anything standing on
   // the apron is buried a few centimetres instead of floating above it.
   return (
     <group position={[0, HEIGHT.ground, 0]}>
-      <ControlTower position={[RUNWAY_HALF + 120, 0, TAXIWAY.z + 150]} />
-      <Hangar position={[APRON_X, 0, TAXIWAY.z - 46]} />
-      {!minimal && <Hangar position={[APRON_X, 0, TAXIWAY.z + 30]} />}
+      <ControlTower position={[RUNWAY_HALF + 120, 0, TAXIWAY.z + 150]} lit={lit} />
+      <Hangar position={[APRON_X, 0, TAXIWAY.z - 46]} lit={lit} />
+      {!minimal && <Hangar position={[APRON_X, 0, TAXIWAY.z + 30]} lit={lit} />}
       {!minimal && (
-        <Hangar position={[APRON_X + 74, 0, TAXIWAY.z - 8]} width={34} depth={26} />
+        <Hangar position={[APRON_X + 74, 0, TAXIWAY.z - 8]} lit={lit} width={34} depth={26} />
       )}
       <Windsock position={[RUNWAY_HALF + 34, 0, RUNWAY.threshold + 120]} />
+      {preset.buildings === "urban" && <City lit={lit} />}
     </group>
   );
 }

@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, OrbitControls, useBounds, useProgress } from "@react-three/drei";
 import * as THREE from "three";
-import type { Aircraft, AnimationId } from "@/lib/types";
+import type { Aircraft, AnimationId, PhaseId } from "@/lib/types";
 import { modelExtent } from "@/lib/geometry";
 import { baseLocation, getAllBases, getBaseById } from "@/lib/bases";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -13,6 +13,7 @@ import { Rotorcraft } from "./geometry/Rotorcraft";
 import { GlbAircraft } from "./GlbAircraft";
 import { Annotations } from "./Annotations";
 import { BaseEnvironment } from "./environment/BaseEnvironment";
+import { PHASES, PHASE_ORDER } from "./environment/phases";
 import { GroundShadow, Grounded, HangarFloor, HangarLighting, PostFX } from "./Scene";
 import { ANIMATION_LABELS, IDLE, type AnimationState } from "./geometry/animation";
 
@@ -63,6 +64,17 @@ export function AircraftViewer({
   const [setting, setSetting] = useState(() => aircraft.homeBase ?? HANGAR);
   const base = getBaseById(setting);
 
+  // Each station opens on the look that suits it — Hindan after dark, Jamnagar at
+  // sunset, Leh in clear morning light. Choosing a station snaps to its own time of
+  // day; the buttons then override it until the next station is picked.
+  const [phase, setPhase] = useState<PhaseId>(() => base?.opensAt ?? "day");
+
+  const chooseSetting = (id: string) => {
+    setSetting(id);
+    const next = getBaseById(id);
+    if (next) setPhase(next.opensAt);
+  };
+
   // The turntable follows the OS motion preference until the visitor overrides it.
   const reducedMotion = usePrefersReducedMotion();
   const [autoRotateOverride, setAutoRotateOverride] = useState<boolean | null>(null);
@@ -95,7 +107,7 @@ export function AircraftViewer({
               </div>
             }
           >
-            {base ? <BaseEnvironment terrain={base.terrain} /> : <HangarLighting />}
+            {base ? <BaseEnvironment base={base} phase={phase} /> : <HangarLighting />}
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.28}>
                 <ResetOnSignal signal={resetSignal} />
@@ -191,7 +203,7 @@ export function AircraftViewer({
           <div className="ml-auto flex gap-2">
             <select
               value={setting}
-              onChange={(event) => setSetting(event.target.value)}
+              onChange={(event) => chooseSetting(event.target.value)}
               aria-label="Setting"
               style={{ colorScheme: "dark" }}
               className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 font-mono text-xs uppercase tracking-wider text-slate-300 transition-colors hover:border-white/25 hover:text-white"
@@ -208,6 +220,27 @@ export function AircraftViewer({
                 <option value={HANGAR}>Hangar</option>
               </optgroup>
             </select>
+
+            {/* Time of day. Only outdoors — the hangar has no weather. */}
+            {base && (
+              <div className="flex overflow-hidden rounded-md border border-white/10">
+                {PHASE_ORDER.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPhase(id)}
+                    aria-pressed={phase === id}
+                    className={`px-2.5 py-1.5 font-mono text-xs uppercase tracking-wider transition-all ${
+                      phase === id
+                        ? "bg-sky-400/15 text-sky-200"
+                        : "bg-white/[0.03] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {PHASES[id].label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setAutoRotateOverride(!autoRotate)}

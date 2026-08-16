@@ -2,10 +2,9 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
-import type { TerrainId } from "@/lib/types";
 import { HEIGHT } from "./layout";
 import { valueNoise } from "./noise";
-import type { ScenePreset } from "./presets";
+import type { ScenePreset } from "./scene";
 import { terrainGeometry, terrainHeight } from "./terrain";
 
 /**
@@ -16,13 +15,14 @@ import { terrainGeometry, terrainHeight } from "./terrain";
  * from Ambala to Leh and back costs nothing the second time.
  */
 
-const cache = new Map<TerrainId, THREE.BufferGeometry>();
+const cache = new Map<number, THREE.BufferGeometry>();
 
-function groundGeometry(id: TerrainId, preset: ScenePreset): THREE.BufferGeometry {
-  const hit = cache.get(id);
+/** Keyed by the station's seed: the ground is the station's, not the landscape's. */
+function groundGeometry(preset: ScenePreset): THREE.BufferGeometry {
+  const hit = cache.get(preset.terrain.seed);
   if (hit) return hit;
   const geometry = terrainGeometry(preset.terrain);
-  cache.set(id, geometry);
+  cache.set(preset.terrain.seed, geometry);
   return geometry;
 }
 
@@ -110,13 +110,15 @@ function Sea({ preset }: { preset: ScenePreset }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, sea.level, 0]}>
       <circleGeometry args={[preset.terrain.radius * 1.3, 96]} />
-      <meshStandardMaterial color="#2c4f63" roughness={0.16} metalness={0.5} />
+      {/* Smooth and barely rough, so it takes its colour from the sky above it —
+          which means it turns with the time of day for free. */}
+      <meshStandardMaterial color="#31586e" roughness={0.12} metalness={0.55} />
     </mesh>
   );
 }
 
-export function Ground({ id, preset }: { id: TerrainId; preset: ScenePreset }) {
-  const geometry = useMemo(() => groundGeometry(id, preset), [id, preset]);
+export function Ground({ preset }: { preset: ScenePreset }) {
+  const geometry = useMemo(() => groundGeometry(preset), [preset]);
 
   // The whole landscape sits a hand's width below the paving. It has to: the flat
   // pad and the runway slab are both level over 2.4 km, and two surfaces at the same

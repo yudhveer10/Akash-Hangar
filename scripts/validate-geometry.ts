@@ -22,7 +22,13 @@ import {
   RUNWAY_START,
   runwayMarkings,
 } from "../components/three/environment/layout";
-import { terrainGeometry, terrainHeight } from "../components/three/environment/terrain";
+import {
+  terrainGeometry,
+  terrainHeight,
+  type TerrainSpec,
+} from "../components/three/environment/terrain";
+import { sceneFor, terrainFor } from "../components/three/environment/scene";
+import { PHASE_ORDER } from "../components/three/environment/phases";
 import {
   fuselageGeometry,
   surfaceGeometry,
@@ -244,6 +250,23 @@ function checkBases() {
 
     if (!PRESETS[base.terrain]) fail(`base ${base.id}: no scene preset for "${base.terrain}"`);
     else pass();
+
+    if (!PHASE_ORDER.includes(base.opensAt))
+      fail(`base ${base.id}: opens at "${base.opensAt}", which is not a time of day`);
+    else pass();
+
+    // The character dials are multipliers and bearings; out of range they produce a
+    // sky nobody intended rather than an error.
+    const c = base.character;
+    if (c) {
+      const bad: string[] = [];
+      if (c.sun !== undefined && (c.sun < 0 || c.sun >= 360)) bad.push("sun");
+      if (c.clouds !== undefined && (c.clouds < 0 || c.clouds > 3)) bad.push("clouds");
+      if (c.haze !== undefined && (c.haze < 0.2 || c.haze > 3)) bad.push("haze");
+      if (c.green !== undefined && (c.green < 0 || c.green > 1)) bad.push("green");
+      if (bad.length) fail(`base ${base.id}: character out of range — ${bad.join(", ")}`);
+      else pass();
+    }
   }
 
   for (const entry of aircraft) {
@@ -266,9 +289,19 @@ function checkBases() {
  * checked here.
  */
 function checkEnvironment() {
-  for (const [id, preset] of Object.entries(PRESETS)) {
-    const spec = preset.terrain;
+  // Every station grows its own ground from its own seed, so each has to be checked:
+  // a landscape that is fine on one seed can land the field on a flat patch or a
+  // hillside on another.
+  const grounds: [string, ReturnType<typeof terrainFor>][] = [
+    ...Object.entries(PRESETS).map(
+      ([id, preset]) => [`landscape ${id}`, preset.terrain] as [string, typeof preset.terrain],
+    ),
+    ...bases.map(
+      (base) => [`${base.id} (${base.terrain})`, terrainFor(base)] as [string, TerrainSpec],
+    ),
+  ];
 
+  for (const [id, spec] of grounds) {
     // Coarse mesh: winding and finiteness do not depend on the resolution.
     const geometry = terrainGeometry(spec, 26, 48);
     const position = geometry.getAttribute("position");
@@ -325,6 +358,36 @@ function checkEnvironment() {
     if (relief < spec.amplitude * 0.1)
       fail(`terrain ${id}: no relief within the disc (highest sample ${relief.toFixed(1)} m)`);
     else pass();
+  }
+
+  // No two stations may end up on the same ground, which is the whole point of
+  // seeding them separately.
+  const seeds = new Map<number, string>();
+  for (const base of bases) {
+    const { seed } = terrainFor(base);
+    const clash = seeds.get(seed);
+    if (clash) fail(`base ${base.id}: same terrain seed as ${clash}`);
+    else pass();
+    seeds.set(seed, base.id);
+  }
+
+  // Every station at every time of day has to resolve to a usable scene.
+  for (const base of bases) {
+    for (const phase of PHASE_ORDER) {
+      const scene = sceneFor(base, phase);
+      const colours = [
+        scene.sky.zenith,
+        scene.sky.horizon,
+        scene.sun.colour,
+        scene.fog.colour,
+        scene.pavementTint,
+      ];
+      if (colours.some((c) => !/^#[0-9a-f]{6}$/i.test(c)))
+        fail(`${base.id} at ${phase}: produced a colour that is not a hex triplet`);
+      else if (!(scene.fog.density > 0) || !(scene.sun.intensity > 0))
+        fail(`${base.id} at ${phase}: fog or sunlight resolved to nothing`);
+      else pass();
+    }
   }
 }
 

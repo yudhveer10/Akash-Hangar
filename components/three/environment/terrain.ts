@@ -53,6 +53,12 @@ export interface TerrainSpec {
   ridged: number;
   /** Fraction of local relief above which snow lies. Over 1 disables it. */
   snowLine: number;
+  /**
+   * Height in metres to quantise relief to. Country that erodes in layers — the
+   * Deccan and Malwa plateaux — wears into flat tops and steps rather than peaks,
+   * and stepping the height function is what produces that.
+   */
+  terrace?: number;
   colours: TerrainColours;
   /** Optional sea, in the −X direction from the field. */
   sea?: { level: number; shore: number };
@@ -102,7 +108,13 @@ export function terrainHeight(spec: TerrainSpec, x: number, z: number): number {
 
   // Everything is scaled by the field mask, the curvature included — otherwise the
   // ground sinks away under the far end of the runway and leaves it in mid-air.
-  let h = (spec.amplitude * grown * rim * (0.3 + 0.7 * macro) * n - curve) * field;
+  let relief = spec.amplitude * grown * rim * (0.3 + 0.7 * macro) * n;
+  if (spec.terrace) {
+    // Only most of the way, so the steps read as weathered rather than machined.
+    relief = mix(relief, Math.round(relief / spec.terrace) * spec.terrace, 0.72);
+  }
+
+  let h = (relief - curve) * field;
 
   if (spec.sea) {
     // Ground falls away to seabed on the port side of the field.

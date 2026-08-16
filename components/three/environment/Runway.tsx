@@ -12,7 +12,7 @@ import {
   TAXIWAY,
   TAXIWAY_FROM,
 } from "./layout";
-import type { ScenePreset } from "./presets";
+import type { ScenePreset } from "./scene";
 import { pavementMaps, runwayTexture } from "./textures";
 
 /**
@@ -72,12 +72,15 @@ function lampMesh(
   colour: string,
   emissive: string,
   size: number,
+  intensity: number,
 ): THREE.InstancedMesh {
   const geometry = new THREE.BoxGeometry(size, size * 1.3, size);
   const material = new THREE.MeshStandardMaterial({
     color: colour,
     emissive,
-    emissiveIntensity: 0.6,
+    // Past 1 this clears the bloom threshold and the lamp starts to burn.
+    emissiveIntensity: intensity,
+    toneMapped: intensity <= 1,
     roughness: 0.3,
   });
   const mesh = new THREE.InstancedMesh(geometry, material, positions.length);
@@ -92,28 +95,39 @@ function lampMesh(
   return mesh;
 }
 
-function Lights() {
+function Lights({ intensity, reach }: { intensity: number; reach: number }) {
   const lamps = useMemo(() => {
-    // Only the near stretch is lit. Further out each lamp is smaller than a pixel,
-    // and sub-pixel bright specks sparkle as the camera moves.
+    // In daylight the far lamps are smaller than a pixel and sub-pixel specks
+    // sparkle as the camera moves, so the line is kept short. After dark they are
+    // the whole picture, and bloom smears them into something worth seeing.
     const edge: [number, number][] = [];
-    for (let z = RUNWAY.threshold; z < RUNWAY.threshold + 600; z += 60) {
+    for (let z = RUNWAY.threshold; z < RUNWAY.threshold + reach; z += 60) {
       edge.push([RUNWAY_HALF + 2.5, z], [-(RUNWAY_HALF + 2.5), z]);
     }
+
     const threshold: [number, number][] = [];
     for (let x = -RUNWAY_HALF + 2; x <= RUNWAY_HALF - 2; x += 3.6) {
       threshold.push([x, RUNWAY.threshold - 2.5]);
     }
+
+    // Approach lighting on the extended centreline, out over the overrun.
+    const approach: [number, number][] = [];
+    for (let z = RUNWAY.threshold - 30; z > RUNWAY_START - 120; z -= 30) {
+      approach.push([0, z], [-4.5, z], [4.5, z]);
+    }
+
     return {
-      edge: lampMesh(edge, "#e8eef6", "#dceaff", 0.34),
-      threshold: lampMesh(threshold, "#2fd07a", "#37e78a", 0.3),
+      edge: lampMesh(edge, "#e8eef6", "#dceaff", 0.34, intensity),
+      threshold: lampMesh(threshold, "#2fd07a", "#37e78a", 0.3, intensity * 1.15),
+      approach: lampMesh(approach, "#fff6e2", "#fff1d0", 0.3, intensity * 1.1),
     };
-  }, []);
+  }, [intensity, reach]);
 
   return (
     <>
       <primitive object={lamps.edge} />
       <primitive object={lamps.threshold} />
+      <primitive object={lamps.approach} />
     </>
   );
 }
@@ -180,7 +194,7 @@ export function Runway({ preset }: { preset: ScenePreset }) {
         />
       </mesh>
 
-      <Lights />
+      <Lights intensity={preset.lamps} reach={preset.lampReach} />
     </group>
   );
 }

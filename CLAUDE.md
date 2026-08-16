@@ -149,7 +149,31 @@ Serials are representative of each type's real series rather than specific airfr
 
 The viewer can stand an aircraft on a runway instead of in the studio hangar. Each
 aircraft names a `homeBase` — the station it opens at — and the picker in the viewer
-can move it to any other station in `data/bases.ts`.
+can move it to any other station in `data/bases.ts`, at any time of day.
+
+A scene is **landscape × phase × station**, resolved in `scene.ts`:
+
+- the **landscape** (`presets.ts`) is the country a field sits in, in daylight;
+- the **phase** (`phases.ts`) is day, dusk or night, expressed as colour targets and
+  weights rather than as scenes of its own, so eight landscapes and three phases give
+  twenty-four looks out of eleven definitions;
+- the **station** makes it a particular place. Its id seeds the terrain, the clouds
+  and the stars, so two fields sharing a landscape are not the same field — before
+  that, the six plains stations were literally identical ground under an identical
+  sky. Its `character` block moves the sun's bearing, the cloud cover, the haze and
+  how green the ground is. And `opensAt` names the phase it opens on, so picking a
+  station snaps to the look that suits it — a city field after dark, a coast at
+  sunset — with the phase buttons overriding that until the next station is picked.
+
+Sun bearing is a station's, not a landscape's, and both the shadows and the sun in
+the sky read from the same number, so moving it moves both. It also drives the shadow
+camera: a 6° dusk sun throws a shadow near sixty metres long, and the camera widens
+as the sun drops rather than cutting it off partway down the runway.
+
+`blend` in `scene.ts` mixes **in sRGB, not through `THREE.Color`**, which works in
+linear space. Ninety per cent of the way from a bright horizon toward near-black comes
+back as mid grey in linear, and every night sky in the place resolved to dusk. Weights
+in `phases.ts` are written to mean what they say.
 
 Everything is generated, like the airframes:
 
@@ -167,11 +191,21 @@ Everything is generated, like the airframes:
 - `textures.ts` — the sky, painted into an equirectangular canvas with its sun always
   at u = 0.5 and then *rotated* into place, plus the asphalt maps. The sky doubles as
   the scene's environment map, which is most of why the aircraft looks like it is
-  really outside.
-- `presets.ts` — the six landscapes (`himalayan`, `foothills`, `plains`, `desert`,
-  `coastal`, `hills`) with their light, air and palette.
-- `Airfield.tsx` — tower, hangars, windsock. Generic structures for scale, with no
-  insignia or signage: the branding rule applies here too.
+  really outside. Skies are per station per phase and eight megabytes each, so they
+  are held in a four-entry most-recently-used cache and the rest are disposed —
+  wandering the whole station list must not accumulate a few hundred megabytes of
+  texture. The entry just asked for is always the newest, so it is never the one
+  evicted out from under the renderer.
+- `presets.ts` — the eight landscapes (`himalayan`, `foothills`, `plateau`, `plains`,
+  `urban`, `desert`, `coastal`, `hills`) with their light, air and palette. `plateau`
+  uses the terrain builder's `terrace` step, because country that erodes in layers
+  wears into flat tops rather than peaks.
+- `phases.ts` / `scene.ts` — time of day, and the resolver that combines it with a
+  landscape and a station.
+- `Airfield.tsx` — tower, hangars, windsock, and for an `urban` field a skyline beyond
+  the boundary. Generic structures for scale, with no insignia or signage: the
+  branding rule applies here too. Their windows light up with the phase, driven by the
+  same `lamps` value as the runway lighting.
 
 **Nothing may share a height with anything it overlaps.** Every surface takes its
 level from `HEIGHT` in `layout.ts` — ground below shoulders below taxiway below
@@ -196,9 +230,11 @@ nothing.
 **Stations are content, not decoration.** A base carries a city, a state, a note and
 its own `sources`, and is held to the sourcing rule like everything else — the viewer
 renders the station's sources next to it, and the aircraft page merges its home base's
-sources into the page list. `terrain` is the one editorial field: it is a broad-brush
-description of the country a field sits in, not a survey of it. Moving an aircraft to
-a station it does not fly from is labelled as a setting, in as many words.
+sources into the page list. `terrain`, `opensAt` and `character` are the editorial
+fields: between them they say what kind of country a place is, when it is best seen,
+and what its light and weather are broadly like. None is a survey of a real field, a
+claim about when a station operates, or a forecast. Moving an aircraft to a station it
+does not fly from is labelled as a setting, in as many words.
 
 To add a station: append to `data/bases.ts` with at least one source and a terrain
 that already exists, then `npm run validate`.
@@ -218,11 +254,16 @@ also enforces the content rules above: sources present, description long enough,
 animations declared.
 
 It covers the airfield too, which has the same failure mode and worse symptoms: that
-the ground faces upward, that it is dead flat under the whole length of the runway and
-its shoulders (terrain creeping above zero swallows the runway; sagging below it
-leaves the far end in mid-air — a real bug this check caught), that relief actually
-arrives once clear of the strip, and that every station is sourced and points at a
-landscape that exists.
+the ground faces upward, that it is dead flat under the whole length of the runway,
+its shoulders and the apron (terrain creeping above zero swallows the runway; sagging
+below it leaves the far end in mid-air — a real bug this check caught), that relief
+actually arrives once clear of the strip, that no two airfield surfaces share a
+height, and that every station is sourced and points at a landscape that exists.
+
+Terrain checks run **per station, not per landscape**, since each station seeds its
+own ground: a landscape that behaves on one seed can put the field on a flat patch or
+a hillside on another. Every station is also resolved at all three phases, to catch a
+blend that produces something that is not a colour.
 
 ## Status
 

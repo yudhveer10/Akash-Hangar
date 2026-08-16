@@ -4,16 +4,20 @@ import type { TerrainSpec } from "./terrain";
 import type { SkyPalette } from "./textures";
 
 /**
- * The six landscapes.
+ * The landscapes, as they look in daylight.
  *
  * Every station in `data/bases.ts` points at one of these. They are broad-brush
- * portraits of the country a field sits in — a Ladakh valley, the Thar, the Gangetic
- * plain — not surveys of any particular airfield, and nothing here is a claim about
- * a real station's layout. The runway is identical in all six; what changes is the
- * ground, the light and the air.
+ * portraits of the country a field sits in — a Ladakh valley, the Thar, the Deccan
+ * plateau, the built-up plain outside Delhi — not surveys of any particular airfield,
+ * and nothing here is a claim about a real station's layout. The runway is identical
+ * in all of them; what changes is the ground, the light and the air.
+ *
+ * This is the daylight base. `phases.ts` takes it to dusk and night, and `scene.ts`
+ * gives each station its own seed so that two fields sharing a landscape are still
+ * not the same field.
  */
 
-export interface ScenePreset {
+export interface Landscape {
   sky: SkyPalette;
   sun: { azimuth: number; elevation: number; colour: string; intensity: number };
   ambient: { sky: string; ground: string; intensity: number };
@@ -28,8 +32,11 @@ export interface ScenePreset {
   shoulder: string;
   /** What is scattered on the ground clear of the field. */
   scatter: { kind: "tree" | "scrub" | "rock"; colour: string; count: number; scale: number };
-  /** Stations in open country get the full set of buildings; a valley strip does not. */
-  buildings: "full" | "minimal";
+  /**
+   * A valley strip gets one hangar, open country gets the full set, and a field on
+   * the edge of a city gets a skyline beyond the boundary as well.
+   */
+  buildings: "full" | "minimal" | "urban";
 }
 
 /** Runway strip the ground has to stay flat along, with a margin at each end. */
@@ -38,7 +45,7 @@ const STRIP = { from: RUNWAY_START - 140, to: RUNWAY_END + 140 };
 /** The apron, taxiway and buildings, held level alongside it. */
 const PAD = APRON_AREA;
 
-export const PRESETS: Record<TerrainId, ScenePreset> = {
+export const PRESETS: Record<TerrainId, Landscape> = {
   himalayan: {
     sky: {
       zenith: "#0d3f7d",
@@ -116,6 +123,46 @@ export const PRESETS: Record<TerrainId, ScenePreset> = {
     buildings: "full",
   },
 
+  plateau: {
+    sky: {
+      zenith: "#3277b4",
+      horizon: "#dcd9cd",
+      ground: "#7a7452",
+      sun: { azimuth: 168, elevation: 60, colour: "#fff3dc" },
+      clouds: 0.22,
+    },
+    sun: { azimuth: 168, elevation: 60, colour: "#fff2d8", intensity: 3.2 },
+    ambient: { sky: "#bdd2e6", ground: "#7d7554", intensity: 0.78 },
+    fog: { colour: "#d8d3c2", density: 0.00092 },
+    terrain: {
+      seed: 7734,
+      radius: 3000,
+      strip: STRIP,
+      pad: PAD,
+      flatWidth: 230,
+      blendWidth: 900,
+      amplitude: 135,
+      growth: 1.2,
+      frequency: 1 / 620,
+      octaves: 4,
+      ridged: 0.12,
+      // Steps and flat tops rather than peaks: that is what a plateau erodes into.
+      terrace: 34,
+      snowLine: 2,
+      colours: {
+        low: "#7b7550",
+        high: "#8c8360",
+        rock: "#6f6553",
+        snow: "#eef3f6",
+        sand: "#9d9068",
+      },
+    },
+    pavementTint: "#f5f1e6",
+    shoulder: "#46464a",
+    scatter: { kind: "scrub", colour: "#78784a", count: 320, scale: 1 },
+    buildings: "full",
+  },
+
   plains: {
     sky: {
       zenith: "#2f74b6",
@@ -152,6 +199,45 @@ export const PRESETS: Record<TerrainId, ScenePreset> = {
     shoulder: "#424449",
     scatter: { kind: "tree", colour: "#4a5b34", count: 300, scale: 1 },
     buildings: "full",
+  },
+
+  urban: {
+    sky: {
+      zenith: "#3d7fb2",
+      horizon: "#dcdcd8",
+      ground: "#6d6f4e",
+      sun: { azimuth: 250, elevation: 55, colour: "#fff2dc" },
+      clouds: 0.3,
+    },
+    sun: { azimuth: 250, elevation: 55, colour: "#fff0d6", intensity: 2.9 },
+    ambient: { sky: "#b9cadb", ground: "#6d6f4e", intensity: 0.72 },
+    // A city's air is never as clear as open country's.
+    fog: { colour: "#d4d4cf", density: 0.00135 },
+    terrain: {
+      seed: 5150,
+      radius: 2800,
+      strip: STRIP,
+      pad: PAD,
+      flatWidth: 230,
+      blendWidth: 850,
+      amplitude: 13,
+      growth: 0.7,
+      frequency: 1 / 240,
+      octaves: 4,
+      ridged: 0,
+      snowLine: 2,
+      colours: {
+        low: "#70724f",
+        high: "#7d7a55",
+        rock: "#7c7565",
+        snow: "#eef3f6",
+        sand: "#988f6c",
+      },
+    },
+    pavementTint: "#f2f1ec",
+    shoulder: "#43454a",
+    scatter: { kind: "tree", colour: "#48583a", count: 260, scale: 1 },
+    buildings: "urban",
   },
 
   desert: {

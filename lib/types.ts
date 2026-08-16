@@ -46,10 +46,18 @@ export interface Annotation {
 export type TerrainId =
   | "himalayan"
   | "foothills"
+  | "plateau"
   | "plains"
+  | "urban"
   | "desert"
   | "coastal"
   | "hills";
+
+/**
+ * Time of day. Orthogonal to the landscape — any station can be seen at any of them,
+ * and the runway lights only earn their keep at the last two.
+ */
+export type PhaseId = "day" | "dusk" | "night";
 
 /**
  * An Air Force station the viewer can stand an aircraft on.
@@ -69,6 +77,32 @@ export interface AirBase {
   /** Field elevation, quoted with units. Omitted where no figure could be sourced. */
   elevation?: string;
   terrain: TerrainId;
+  /**
+   * The time of day the station is first shown at, chosen for what suits the place —
+   * a city field after dark, a coast at sunset, mountains in clear morning light.
+   * Presentational, like `terrain`, and never a claim about when a station operates.
+   * Visitors can change it, and doing so leaves this alone.
+   */
+  opensAt: PhaseId;
+  /**
+   * How this field differs from others sharing its landscape.
+   *
+   * The landscape says what kind of country a station sits in; this says what that
+   * particular place is like — where its light comes from, how much cloud and haze
+   * it carries, how green its ground is. Broad-brush and presentational, like
+   * `terrain` and `opensAt`. Every field also gets its own cloud, star and terrain
+   * pattern from its id, so no two skies are the same even where these agree.
+   */
+  character?: {
+    /** Sun bearing in degrees, 0 = straight down the runway. Moves the shadows. */
+    sun?: number;
+    /** Multiplies the landscape's cloud cover. */
+    clouds?: number;
+    /** Multiplies the landscape's haze. */
+    haze?: number;
+    /** 0.5 leaves the landscape's ground as it is; 0 is parched, 1 is lush. */
+    green?: number;
+  };
   /** One sentence of public context: the unit based there, or what the field is known for. */
   note: string;
   sources: Source[];
