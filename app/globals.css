@@ -55,6 +55,37 @@
   color: transparent;
 }
 
+/* Panel treatment for cards: a hairline of light along the top edge, the way a lit
+   surface catches its own bevel. Cheap, and it stops large cards reading as flat holes. */
+@utility card-sheen {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 24px 48px -36px rgba(2, 8, 16, 0.9);
+}
+
+/* Slow scan across the cockpit illustration. Frozen for reduced-motion visitors by the
+   rule in the base layer below — an infinite animation is exactly what that asks about. */
+@utility hud-sweep {
+  animation: hud-sweep 7s linear infinite;
+}
+
+@keyframes hud-sweep {
+  0% {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150px);
+    opacity: 0;
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -96,6 +127,12 @@
     *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
+    }
+
+    /* Looping animations need stopping outright, not shortening: at 0.01ms an
+       infinite animation restarts every frame instead of settling. */
+    .hud-sweep {
+      animation: none !important;
     }
   }
 }

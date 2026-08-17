@@ -8,6 +8,7 @@ import type { Aircraft, AnimationId, PhaseId } from "@/lib/types";
 import { modelExtent } from "@/lib/geometry";
 import { baseLocation, getAllBases, getBaseById } from "@/lib/bases";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
+import { Brackets } from "@/components/ui/Brackets";
 import { FixedWing } from "./geometry/FixedWing";
 import { Rotorcraft } from "./geometry/Rotorcraft";
 import { GlbAircraft } from "./GlbAircraft";
@@ -31,19 +32,6 @@ const OFF =
   "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25 hover:text-white";
 
 const HANGAR = "hangar";
-
-/** HUD-style corner brackets around the viewport. */
-function Brackets() {
-  const corner = "absolute h-5 w-5 border-sky-400/35";
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-3">
-      <span className={`${corner} left-0 top-0 border-l border-t`} />
-      <span className={`${corner} right-0 top-0 border-r border-t`} />
-      <span className={`${corner} bottom-0 left-0 border-b border-l`} />
-      <span className={`${corner} bottom-0 right-0 border-b border-r`} />
-    </div>
-  );
-}
 
 export function AircraftViewer({
   aircraft,

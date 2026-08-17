@@ -21,3 +21,9 @@ function resolve(): string {
 }
 
 export const SITE_URL = resolve();
+
+/**
+ * The one address the site publishes. Kept here rather than typed into each page so
+ * the footer, the contact page and any call to action cannot drift apart.
+ */
+export const CONTACT_EMAIL = "yudhveerp10@gmail.com";

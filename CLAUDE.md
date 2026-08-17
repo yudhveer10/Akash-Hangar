@@ -84,7 +84,9 @@ components/three/    Canvas, scene, viewer chrome, procedural geometry
 components/ui/       cards, spec table, nav, footer, disclaimer
 data/aircraft/       one typed file per aircraft, re-exported from index.ts
 data/bases.ts        Air Force stations, with sources
-lib/                 types.ts (schema), aircraft.ts (server-side), bases.ts (station lookups)
+data/roadmap.ts      what is being built next; rendered by components/ui/ComingSoon.tsx
+lib/                 types.ts (schema), aircraft.ts (server-side), bases.ts (station lookups),
+                     site.ts (canonical URL, CONTACT_EMAIL)
 public/models/       optional .glb overrides, keyed by slug
 ```
 
@@ -270,3 +272,10 @@ blend that produces something that is not a colour.
 v1 scope is the 12 IAF aircraft. The `/world` section is deliberately **not built** —
 `category: "world"` exists in the schema so it can be added later without a migration,
 but the route, nav entry and data are out of scope until the aircraft list is confirmed.
+
+What is not built yet is stated on the site rather than left implied: `data/roadmap.ts`
+holds the list, `components/ui/ComingSoon.tsx` renders it on the home page (`/#next`)
+and, in its list form, on the about page. Two rules for editing it — **no dates**, since
+none can be kept, and nothing may be promised there that the content rules above would
+not allow to ship. The cockpit view is the featured item, and its instrument panels are
+committed to published cockpit photographs and manufacturer material only.
