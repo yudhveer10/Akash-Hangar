@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import { Environment } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { AirBase, PhaseId } from "@/lib/types";
 import { Airfield } from "./Airfield";
@@ -51,11 +52,32 @@ function Sky({ preset }: { preset: ScenePreset }) {
   );
 }
 
-function Daylight({ preset }: { preset: ScenePreset }) {
+function Daylight({
+  preset,
+  focus,
+}: {
+  preset: ScenePreset;
+  focus?: RefObject<THREE.Vector3 | null>;
+}) {
   const sun = useMemo(
     () => sunDirection(preset.sun.azimuth, preset.sun.elevation).multiplyScalar(170),
     [preset],
   );
+
+  // The shadow camera covers a hundred metres or so around whatever it is aimed at.
+  // That is ample for an aircraft parked at the origin, and useless for one landing
+  // on a 2.4 km runway — so the light and its target ride along with the aircraft
+  // when a focus is given, keeping it in the middle of the frustum throughout.
+  const light = useRef<THREE.DirectionalLight>(null);
+  const aim = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame(() => {
+    const at = focus?.current;
+    if (!at || !light.current) return;
+    light.current.position.set(at.x + sun.x, at.y + sun.y, at.z + sun.z);
+    aim.position.copy(at);
+    aim.updateMatrixWorld();
+  });
   // Light bounced back off the ground, from roughly the opposite quarter.
   const bounce = useMemo(() => new THREE.Vector3(-sun.x * 0.5, 30, -sun.z * 0.5), [sun]);
 
@@ -72,7 +94,10 @@ function Daylight({ preset }: { preset: ScenePreset }) {
       <hemisphereLight
         args={[preset.ambient.sky, preset.ambient.ground, preset.ambient.intensity]}
       />
+      <primitive object={aim} />
       <directionalLight
+        ref={light}
+        target={aim}
         position={[sun.x, sun.y, sun.z]}
         intensity={preset.sun.intensity}
         color={preset.sun.colour}
@@ -113,13 +138,22 @@ function Daylight({ preset }: { preset: ScenePreset }) {
   );
 }
 
-export function BaseEnvironment({ base, phase }: { base: AirBase; phase: PhaseId }) {
+export function BaseEnvironment({
+  base,
+  phase,
+  focus,
+}: {
+  base: AirBase;
+  phase: PhaseId;
+  /** Point the sun's shadow should follow, for an aircraft that is not at the origin. */
+  focus?: RefObject<THREE.Vector3 | null>;
+}) {
   const preset = sceneFor(base, phase);
 
   return (
     <>
       <Sky preset={preset} />
-      <Daylight preset={preset} />
+      <Daylight preset={preset} focus={focus} />
       <fogExp2 attach="fog" args={[preset.fog.colour, preset.fog.density]} />
       <Ground preset={preset} />
       <Runway preset={preset} />

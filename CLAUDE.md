@@ -21,6 +21,11 @@ These come from a legal review and constrain every change. Read before touching 
    exactly what `components/three/geometry/markings.tsx` does. The line is: roundels and
    fin flashes go on the aircraft; the site's own identity stays original, and the
    palette stays sky-blue on navy rather than a tricolour treatment.
+   The Air Force's motto sits on the home page under exactly the same line: quoted,
+   transliterated, translated and attributed to the service with a source
+   (`components/ui/Motto.tsx`), which makes it content like any other sourced fact.
+   Moving it into the header, the wordmark, the favicon or the OG image would make it
+   branding, and is not allowed.
 4. **The disclaimer ships on every page.** It lives in `components/ui/SiteFooter.tsx` and
    is rendered by the root layout, so every route inherits it. Do not add a layout that
    bypasses it.
@@ -240,6 +245,30 @@ does not fly from is labelled as a setting, in as many words.
 
 To add a station: append to `data/bases.ts` with at least one source and a terrain
 that already exists, then `npm run validate`.
+
+## The home page landing
+
+The hero is not a turntable: the featured aircraft flies an approach onto the runway at
+its own station, touches down, rolls to a stop, and only then hands the camera over to
+the ordinary orbit controls. It is the same `BaseEnvironment` the aircraft pages use, so
+there is one airfield in the codebase and not two.
+
+The path is **pure maths in `components/three/approach.ts`** — no React, no three — and
+that is the point: `npm run validate` flies it a step at a time and checks what a still
+cannot show. That the aircraft never sinks through the runway, never gains height again
+mid-flare, never rolls backwards; that it crosses the threshold at a sane height, touches
+down inside the touchdown zone markings, stops on the pavement and parks level; that its
+tail clears the runway at the steepest attitude the flare asks for; and that the camera
+stays above ground, outside the aircraft, and keeps it inside the frame. `HeroApproach.tsx`
+only mounts that path — the aircraft pitched about its main wheels rather than the model
+origin, and the tyre smoke, whose ages are read off the same clock so a replay rewinds it.
+
+Two things the sequence needs from elsewhere. `BaseEnvironment` takes an optional `focus`
+ref: the sun's shadow camera covers about a hundred metres and the aircraft covers five
+times that, so the light and its target ride along. And the camera damps its **offset from
+the aircraft**, not its world position — damping the position leaves the camera permanently
+trailing an aircraft flying at a steady 72 m/s, when what wants softening is only the change
+from one shot to the next.
 
 ## Annotations
 

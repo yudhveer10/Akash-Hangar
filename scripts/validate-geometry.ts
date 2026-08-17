@@ -30,6 +30,16 @@ import {
 import { sceneFor, terrainFor } from "../components/three/environment/scene";
 import { PHASE_ORDER } from "../components/three/environment/phases";
 import {
+  FLIGHT,
+  PARK_Z,
+  pitchAt,
+  shotAt,
+  T_END,
+  yAt,
+  zAt,
+} from "../components/three/approach";
+import { modelExtent } from "../lib/geometry";
+import {
   fuselageGeometry,
   surfaceGeometry,
   canopyGeometry,
@@ -432,6 +442,144 @@ function checkAirfield() {
   else pass();
 }
 
+/**
+ * The home page's landing sequence.
+ *
+ * An animation is the one thing here that cannot be checked by looking at a still, and
+ * its failures are the loud kind: an aircraft sinking through the runway, a tail
+ * scraping it, a camera ending up underground or losing the aircraft off the edge of
+ * the frame. The path is pure maths in `components/three/approach.ts` precisely so it
+ * can be flown here, a step at a time, with nothing rendered.
+ */
+function checkApproach() {
+  // The same aircraft the home page features, and the same frame it is shown in.
+  const entry = aircraft.find((a) => a.slug === "su-30mki") ?? aircraft[0];
+  const extent = modelExtent(entry.geometry);
+  const scale = extent / 22;
+  const camera = new THREE.PerspectiveCamera(32, 3 / 2, 0.5, 1800);
+  const offset = new THREE.Vector3();
+  const look = new THREE.Vector3();
+  const eye = new THREE.Vector3();
+  const aim = new THREE.Vector3();
+  const craft = new THREE.Vector3();
+
+  let below = 0;
+  let backwards = 0;
+  let climbing = 0;
+  let underground = 0;
+  let offScreen = 0;
+  let tooClose = 0;
+  let pitchOut = 0;
+  let previous = { z: -Infinity, y: Infinity };
+
+  for (let t = 0; t <= T_END; t += 0.05) {
+    const z = zAt(t);
+    const y = yAt(z);
+    const pitch = pitchAt(t, z);
+
+    if (y < 0) below++;
+    if (z < previous.z) backwards++;
+    // The flare may not balloon: once it is coming down it keeps coming down.
+    if (y > previous.y + 1e-6) climbing++;
+    if (pitch < -0.01 || pitch > 12) pitchOut++;
+    previous = { z, y };
+
+    shotAt(t, offset, look);
+    offset.multiplyScalar(scale);
+    look.multiplyScalar(scale);
+    craft.set(0, y, z);
+    eye.copy(craft).add(offset);
+    aim.copy(craft).add(look);
+
+    // The camera stands on the airfield too, and the shoulder is barely below zero.
+    if (eye.y < 1.5) underground++;
+    if (eye.distanceTo(craft) < extent * 0.6) tooClose++;
+
+    camera.position.copy(eye);
+    camera.lookAt(aim);
+    camera.updateMatrixWorld();
+    const ndc = craft.clone().project(camera);
+    // Margin for the damping, which lets the real camera trail the scripted one
+    // through a change of shot.
+    if (Math.abs(ndc.x) > 0.85 || Math.abs(ndc.y) > 0.85 || ndc.z > 1) offScreen++;
+  }
+
+  if (below) fail(`approach: aircraft is below the runway on ${below} samples`);
+  else pass();
+  if (backwards) fail(`approach: aircraft moves backwards on ${backwards} samples`);
+  else pass();
+  if (climbing) fail(`approach: the descent gains height again on ${climbing} samples`);
+  else pass();
+  if (pitchOut) fail(`approach: pitch leaves 0–12° on ${pitchOut} samples`);
+  else pass();
+  if (underground) fail(`approach: camera is at or below ground on ${underground} samples`);
+  else pass();
+  if (tooClose) fail(`approach: camera is inside the aircraft on ${tooClose} samples`);
+  else pass();
+  if (offScreen) fail(`approach: aircraft is out of frame on ${offScreen} samples`);
+  else pass();
+
+  // Starts airborne, on a normal-looking final rather than a strafing pass.
+  const startHeight = yAt(zAt(0));
+  if (startHeight < 15 || startHeight > 60)
+    fail(`approach: starts at ${startHeight.toFixed(1)} m, which is not a final approach`);
+  else pass();
+
+  // Crosses the threshold at about the height an aircraft does.
+  const crossing = yAt(RUNWAY.threshold);
+  if (crossing < 8 || crossing > 25)
+    fail(`approach: crosses the threshold at ${crossing.toFixed(1)} m`);
+  else pass();
+
+  // Touches down on the touchdown zone rather than on the piano keys or halfway down.
+  const zoneFrom = RUNWAY.threshold + 150;
+  const zoneTo = RUNWAY.threshold + 600;
+  if (FLIGHT.touchdownZ < zoneFrom || FLIGHT.touchdownZ > zoneTo)
+    fail(`approach: touches down at z=${FLIGHT.touchdownZ}, outside the touchdown zone`);
+  else pass();
+
+  // And stops on the pavement, with runway to spare.
+  if (PARK_Z <= FLIGHT.touchdownZ || PARK_Z > RUNWAY_END - 300)
+    fail(`approach: rolls out to z=${PARK_Z.toFixed(0)}, which is not on the runway`);
+  else pass();
+
+  // It has actually stopped by the time the visitor gets the controls.
+  const creep = (zAt(T_END) - zAt(T_END - 0.1)) / 0.1;
+  if (creep > 0.5) fail(`approach: still rolling at ${creep.toFixed(2)} m/s when it parks`);
+  else pass();
+
+  // And it is sitting level, not parked nose-high.
+  if (pitchAt(T_END, zAt(T_END)) > 0.05) fail("approach: parks nose-high");
+  else pass();
+
+  // No tailstrike: everything behind the main wheels has to clear the runway at the
+  // steepest attitude the sequence asks for.
+  const g = entry.geometry;
+  const legs =
+    g.kind === "fixedWing" ? g.gear.main : g.gear.type === "wheels" ? g.gear.main : [];
+  if (legs.length > 0) {
+    const pivotZ = legs.reduce((sum, leg) => sum + leg.position[2], 0) / legs.length;
+    const lift = -Math.min(
+      ...legs.map((leg) => leg.position[1] - leg.length - leg.wheelRadius),
+    );
+    const theta = FLIGHT.flarePitch * (Math.PI / 180);
+    let strike = 0;
+
+    for (const station of g.fuselage) {
+      if (station.z >= pivotZ) continue;
+      const bottom = (station.y ?? 0) - station.height / 2 + lift;
+      const arm = pivotZ - station.z;
+      if (bottom * Math.cos(theta) - arm * Math.sin(theta) < 0.05) strike++;
+    }
+
+    if (strike)
+      fail(
+        `approach: ${entry.slug} strikes its tail at ${FLIGHT.flarePitch}° on ${strike} stations`,
+      );
+    else pass();
+  }
+}
+
 console.log(
   `Validating ${aircraft.length} airframes, ${bases.length} stations and ${Object.keys(PRESETS).length} settings\n`,
 );
@@ -440,6 +588,7 @@ checkAirfield();
 
 checkBases();
 checkEnvironment();
+checkApproach();
 
 for (const entry of aircraft) {
   const g = entry.geometry;

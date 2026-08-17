@@ -4,9 +4,10 @@ import { PHASES, PHASE_ORDER } from "@/components/three/environment/phases";
 import { AircraftCard } from "@/components/ui/AircraftCard";
 import { Brackets } from "@/components/ui/Brackets";
 import { ComingSoon } from "@/components/ui/ComingSoon";
+import { Motto } from "@/components/ui/Motto";
 import { Reveal } from "@/components/ui/Reveal";
 import { getAllAircraft, getAircraftBySlug } from "@/lib/aircraft";
-import { getAllBases } from "@/lib/bases";
+import { baseLocation, getAllBases, homeBaseOf } from "@/lib/bases";
 import { modelExtent } from "@/lib/geometry";
 import { CONTACT_EMAIL } from "@/lib/site";
 import type { PhaseId } from "@/lib/types";
@@ -30,6 +31,11 @@ export default function HomePage() {
   const fleet = getAllAircraft();
   const featured = getAircraftBySlug("su-30mki") ?? fleet[0];
   const stations = getAllBases();
+
+  // The hero lands the aircraft at its own station, at the time of day that station
+  // opens on — the same pairing the aircraft page would give it.
+  const heroBase = homeBaseOf(featured) ?? stations[0];
+  const heroPhase = heroBase.opensAt;
 
   const partCount = fleet.reduce((n, a) => n + (a.annotations?.length ?? 0), 0);
   const landscapes = new Set(stations.map((s) => s.terrain)).size;
@@ -69,11 +75,11 @@ export default function HomePage() {
               Indian Air Force · 3D fleet
             </p>
 
-            <h1 className="text-gradient mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+            <h1 className="text-gradient mt-6 text-balance text-5xl font-semibold leading-[0.98] tracking-tight sm:text-6xl lg:text-[4rem]">
               Every aircraft, from every angle.
             </h1>
 
-            <p className="mt-6 max-w-xl text-pretty leading-relaxed text-slate-400">
+            <p className="mt-6 max-w-lg text-pretty text-sm leading-relaxed text-slate-400 sm:text-[15px]">
               Akash Hangar is an interactive reference for the aircraft of the Indian Air
               Force. Orbit each airframe in 3D, drop the landing gear, light the
               afterburner, stand it on a runway at dusk, and read what every part of it
@@ -98,7 +104,7 @@ export default function HomePage() {
             <dl className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
               {stats.map((stat) => (
                 <div key={stat.label}>
-                  <dd className="font-mono text-2xl text-white">{stat.value}</dd>
+                  <dd className="font-mono text-3xl text-white">{stat.value}</dd>
                   <dt className="mt-1 font-mono text-[10px] uppercase leading-relaxed tracking-wider text-slate-500">
                     {stat.label}
                   </dt>
@@ -108,10 +114,12 @@ export default function HomePage() {
           </div>
 
           <div className="card-sheen overflow-hidden rounded-2xl border border-white/10">
-            <div className="bg-hangar relative aspect-[4/3]">
+            <div className="bg-hangar relative aspect-[3/2]">
               <HeroViewer
                 geometry={featured.geometry}
                 extent={modelExtent(featured.geometry)}
+                base={heroBase}
+                opensAt={heroPhase}
               />
               <Brackets className="inset-3" />
 
@@ -119,12 +127,22 @@ export default function HomePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-sky-300/90">
                   {featured.shortName}
                 </p>
-                <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400/80">
                   {featured.role}
                 </p>
               </div>
 
-              <p className="pointer-events-none absolute bottom-4 left-5 font-mono text-[10px] uppercase tracking-wider text-slate-500">
+              <div className="pointer-events-none absolute right-5 top-4 text-right">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-sky-300/75">
+                  {heroBase.station}
+                </p>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400/70">
+                  {baseLocation(heroBase)}
+                </p>
+              </div>
+
+              {/* Hidden on a narrow card, where the phase buttons need the room. */}
+              <p className="pointer-events-none absolute bottom-4 left-5 hidden font-mono text-[10px] uppercase tracking-wider text-slate-400/70 sm:block">
                 Drag to look around
               </p>
             </div>
@@ -140,6 +158,10 @@ export default function HomePage() {
               ))}
             </dl>
           </div>
+        </div>
+
+        <div className="relative pb-16">
+          <Motto />
         </div>
       </section>
 
@@ -168,7 +190,9 @@ export default function HomePage() {
                 <h2 className="mt-4 font-mono text-xs uppercase tracking-widest text-sky-400">
                   {item.title}
                 </h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-400">{item.body}</p>
+                <p className="mt-3 text-[13px] leading-relaxed text-slate-400">
+                  {item.body}
+                </p>
               </div>
             </Reveal>
           ))}
@@ -186,10 +210,10 @@ export default function HomePage() {
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky-400">
               Anatomy
             </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
               {partCount} parts, named and explained
             </h2>
-            <p className="mt-5 leading-relaxed text-slate-400">
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-400">
               A photograph tells you what an aircraft looks like. It does not tell you why
               the intake is shaped that way, or what the fairing behind the canopy is for.
               Switch the anatomy panel on and the model marks every part worth knowing
@@ -212,13 +236,13 @@ export default function HomePage() {
                     {i + 1}
                   </span>
                   <div>
-                    <p className="text-sm text-slate-200">
+                    <p className="text-[13px] text-slate-200">
                       {part.label}
                       <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-slate-600">
                         {part.aircraft}
                       </span>
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
                       {part.note}
                     </p>
                   </div>
@@ -237,17 +261,17 @@ export default function HomePage() {
               <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky-400">
                 Settings
               </p>
-              <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+              <h2 className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
                 See it where it flies
               </h2>
-              <p className="mt-5 leading-relaxed text-slate-400">
+              <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-400">
                 Each aircraft opens on the station it is publicly associated with, and can
                 be moved to any of the {stations.length} in the list, at any time of day.
                 The runway is the same everywhere; the country around it is not —{" "}
                 {landscapes} landscapes, from Himalayan valley floor to coastal flats, each
                 generated rather than photographed.
               </p>
-              <p className="mt-4 text-xs leading-relaxed text-slate-500">
+              <p className="mt-4 max-w-md text-xs leading-relaxed text-slate-500">
                 Every station carries its own sources, and moving an aircraft somewhere it
                 does not fly from is labelled as a setting rather than presented as fact.
               </p>
@@ -301,7 +325,7 @@ export default function HomePage() {
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky-400">
               The hangar
             </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
               {fleet.length} aircraft, frontline fighters to heavy lift
             </h2>
           </div>
@@ -313,7 +337,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {fleet.slice(0, 6).map((entry, i) => (
             <Reveal key={entry.slug} delay={Math.min(i, 5) * 0.04}>
               <AircraftCard entry={entry} />
@@ -336,10 +360,10 @@ export default function HomePage() {
           />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-xl">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-balance text-2xl font-semibold leading-tight text-white sm:text-3xl">
                 Spotted something wrong?
               </h2>
-              <p className="mt-3 leading-relaxed text-slate-400">
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">
                 Specifications, service dates and airframe shapes are all fair game.
                 Corrections with a public source behind them are the fastest way to make
                 this better — and suggestions for what to model next are welcome too.
