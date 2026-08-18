@@ -161,7 +161,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative isolate pb-16">
+        <div className="relative isolate py-20 pb-24">
           <FleetDrift />
           <Motto />
         </div>

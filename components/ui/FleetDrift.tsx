@@ -1,107 +1,113 @@
 /**
  * The drifting silhouette field behind the motto.
  *
- * Deliberately *not* a wall of insignia. A slow horizontal band of marks behind a
- * hero line is the visual grammar of a partner or customer strip, and filling it
- * with Air Force crests would say the thing the whole site is built to avoid — see
- * rule 3 in CLAUDE.md. What drifts here instead is the fleet itself: aircraft
- * planforms, which are descriptive of the machines this site is about and carry no
- * claim of affiliation, in the same way the roundels on the 3D models do.
+ * Deliberately *not* a wall of insignia. A slow horizontal band of marks behind a hero
+ * line is the visual grammar of a partner or customer strip, and filling it with Air
+ * Force crests would say the thing the whole site is built to avoid — see rule 3 in
+ * CLAUDE.md. What drifts here instead is the fleet itself: aircraft profiles, which
+ * are descriptive of the machines this site is about and carry no claim of
+ * affiliation, in the same way the roundels on the 3D models do.
  *
- * The shapes are original artwork and generic to each type class rather than traced
- * from any published three-view, so nothing here is borrowed. They are ornament, not
- * content: no aircraft is named or captioned, because a silhouette this loose would
- * not survive the accuracy rule if it claimed to be a particular airframe.
+ * The shapes are original artwork, generic to each type class rather than traced from
+ * any published three-view, so nothing is borrowed. They are ornament, not content: no
+ * aircraft is named or captioned, because a silhouette this loose would not survive
+ * the accuracy rule if it claimed to be a particular airframe.
  *
- * Authored nose-up in a 100 x 100 box so every type sits on the same scale.
+ * Drawn in **side profile**, not planform. The first version looked down on the
+ * aircraft, which fails twice at this size: a rotor seen from above is a ring of thin
+ * blades that resolves into a starburst rather than a helicopter, and a planform
+ * travelling sideways reads as skidding rather than flying. In profile a rotor is one
+ * line, and a shape with a nose on the leading edge reads as flight.
+ *
+ * Authored nose-right in a shared 200 x 64 box so every type sits on one scale and one
+ * optical weight. Lanes that travel left flip on the X axis, so nothing ever flies
+ * backwards.
  */
 
-type Silhouette = { id: string; body: string; extras?: string[]; rotor?: number[] };
+type Profile = { id: string; paths: string[] };
 
-const FLEET: Silhouette[] = [
+const FLEET: Profile[] = [
   {
-    // Tailless delta with canards.
-    id: "delta-canard",
-    body: "M50 3 L52.5 20 L57 24 L59.5 31 L53 33 L53 42 L90 78 L90 86 L53 74 L53 89 L57 96 L43 96 L47 89 L47 74 L10 86 L10 78 L47 42 L47 33 L40.5 31 L43 24 L47.5 20 Z",
-  },
-  {
-    // Twin-finned heavy fighter, wide body between the nozzles.
-    id: "twin-fin",
-    body: "M50 2 L53 17 L56 23 L56.5 33 L88 65 L88 73 L56.5 59 L58 77 L61 82 L59 95 L52.5 95 L51.5 74 L48.5 74 L47.5 95 L41 95 L39 82 L42 77 L43.5 59 L12 73 L12 65 L43.5 33 L44 23 L47 17 Z",
-    extras: [
-      "M60 52 L66.5 49.5 L69 66 L62 68 Z",
-      "M40 52 L33.5 49.5 L31 66 L38 68 Z",
+    // Single-fin delta fighter: needle nose, canopy, swept fin, wing edge-on.
+    id: "fighter",
+    paths: [
+      "M196 40 L168 34 L150 31 L60 29 L22 31 L8 36 L8 45 L26 48 L90 49 L150 45 Z",
+      "M162 31 L152 22 L132 21 L122 30 Z",
+      "M60 30 L42 7 L34 7 L22 30 Z",
+      "M126 45 L88 46 L58 51 L104 50 Z",
+      "M30 40 L6 46 L0 46 L20 41 Z",
     ],
   },
   {
-    // Swept delta, single fin.
-    id: "swept-delta",
-    body: "M50 4 L53 23 L54 39 L86 79 L86 87 L54 71 L54 88 L58 95 L42 95 L46 88 L46 71 L14 87 L14 79 L46 39 L47 23 Z",
+    // Twin-finned heavy fighter. The second fin is offset inboard and a little lower,
+    // which is what reads as "two" from the side instead of smearing into one.
+    id: "heavy",
+    paths: [
+      "M197 41 L170 35 L150 32 L44 30 L14 33 L6 39 L6 46 L20 49 L80 50 L150 46 Z",
+      "M164 32 L154 21 L118 20 L108 31 Z",
+      "M64 30 L46 5 L36 5 L26 30 Z",
+      "M78 31 L62 10 L54 10 L44 31 Z",
+      "M136 44 L92 45 L60 52 L108 51 Z",
+      "M28 42 L4 49 L0 49 L18 43 Z",
+    ],
   },
   {
-    // Four-engine transport: long body, high aspect wing, underslung nacelles.
+    // High-wing four-engine transport. The upswept tail cone is the line that makes a
+    // fat tube read as a freighter rather than an airliner.
     id: "transport",
-    body: "M50 3 L53.5 13 L55 43 L96 59 L96 67 L55 61 L55 79 L72 92 L72 96 L50 89 L28 96 L28 92 L45 79 L45 61 L4 67 L4 59 L45 43 L46.5 13 Z",
-    extras: [
-      "M62 46 L67.5 47.8 L67.5 60 L62 58.2 Z",
-      "M75 50 L80.5 51.8 L80.5 63.5 L75 61.7 Z",
-      "M38 46 L32.5 47.8 L32.5 60 L38 58.2 Z",
-      "M25 50 L19.5 51.8 L19.5 63.5 L25 61.7 Z",
+    paths: [
+      "M188 34 L176 30 L48 30 L16 33 L22 41 L70 49 L176 48 L188 44 Z",
+      "M48 30 L30 7 L18 7 L12 32 Z",
+      "M34 8 L6 11 L4 15 L34 13 Z",
+      "M134 29 L98 29 L62 20 L110 20 Z",
+      "M126 30 L108 30 L104 38 L122 38 Z",
+      "M100 27 L84 27 L80 35 L96 35 Z",
     ],
   },
   {
-    // Single main rotor, boom and tail rotor. Blade angles listed separately so the
-    // disc is drawn rather than described as one unreadable path.
+    // Single main rotor. The mast is the whole trick: a disc drawn as a free-floating
+    // bar reads as a detached line, so it is carried on a pylon that meets the cabin,
+    // and its span is set from the mast rather than from the edges of the box.
     id: "rotary",
-    body: "M50 16 C58 16 62 23 62 33 L62 50 L53 54 L53 82 L57 82 L57 90 L43 90 L43 82 L47 82 L47 54 L38 50 L38 33 C38 23 42 16 50 16 Z",
-    rotor: [0, 45, 90, 135],
+    paths: [
+      "M112 34 L130 28 L162 28 C176 28 186 34 186 41 C186 48 178 52 166 52 L124 51 L112 44 Z",
+      "M114 36 L40 39 L40 45 L114 46 Z",
+      "M46 39 L34 18 L24 18 L26 40 Z",
+      "M124 28 L126 21 L138 21 L140 28 Z",
+      "M62 17 L198 17 L198 21 L62 21 Z",
+      "M118 54 L176 54 L176 58 L118 58 Z",
+      "M130 51 L138 51 L134 55 L126 55 Z",
+      "M158 51 L166 51 L162 55 L154 55 Z",
+    ],
   },
   {
-    // Tandem rotor: fuselage carries a hub at each end of the deck.
+    // Tandem rotor: a pylon at each end of the deck, the rear one taller, and discs
+    // sized to overlap the way they actually intermesh from the side.
     id: "tandem",
-    body: "M50 8 C57 8 61 14 61 22 L61 74 C61 84 57 90 50 90 C43 90 39 84 39 74 L39 22 C39 14 43 8 50 8 Z",
-    extras: ["M61 62 L74 74 L74 88 L67 88 L61 78 Z", "M39 62 L26 74 L26 88 L33 88 L39 78 Z"],
+    paths: [
+      "M170 29 L182 36 L182 46 L168 54 L46 54 L26 47 L26 36 L44 29 Z",
+      "M146 29 L148 16 L168 16 L172 29 Z",
+      "M38 29 L44 8 L64 8 L70 29 Z",
+      "M100 18 L200 18 L200 22 L100 22 Z",
+      "M4 10 L108 10 L108 14 L4 14 Z",
+      "M58 54 L70 54 L70 61 L58 61 Z",
+      "M142 54 L154 54 L154 61 L142 61 Z",
+    ],
   },
 ];
 
-/** The rotor disc, as four blades about a hub rather than a ring. */
-function Rotor({ angles, cy }: { angles: number[]; cy: number }) {
-  return (
-    <g>
-      {angles.map((a) => (
-        <rect
-          key={a}
-          x="6"
-          y={cy - 1.6}
-          width="88"
-          height="3.2"
-          rx="1.6"
-          transform={`rotate(${a} 50 ${cy})`}
-        />
-      ))}
-    </g>
-  );
-}
-
-function Shape({ shape }: { shape: Silhouette }) {
+function Shape({ profile, flip }: { profile: Profile; flip: boolean }) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="0 0 200 64"
       fill="currentColor"
       className="h-full w-auto shrink-0"
+      style={flip ? { transform: "scaleX(-1)" } : undefined}
       role="presentation"
     >
-      <path d={shape.body} />
-      {shape.extras?.map((d) => (
+      {profile.paths.map((d) => (
         <path key={d} d={d} />
       ))}
-      {shape.rotor ? <Rotor angles={shape.rotor} cy={33} /> : null}
-      {shape.id === "tandem" ? (
-        <>
-          <Rotor angles={[0, 60, 120]} cy={20} />
-          <Rotor angles={[30, 90, 150]} cy={72} />
-        </>
-      ) : null}
     </svg>
   );
 }
@@ -115,40 +121,45 @@ function Shape({ shape }: { shape: Silhouette }) {
  * width — is what makes that true at *every* viewport: let the copies size to their
  * contents instead and a wide window outruns the track, so each cycle ends on a strip
  * of empty space before it snaps back.
+ *
+ * The horizontal fade lives here rather than on the field, so the field is free to
+ * carry the vertical one. Two masks on one element would need `mask-composite`.
  */
 function Lane({
   height,
   duration,
-  reverse,
+  toRight,
   offset,
 }: {
   height: string;
   duration: string;
-  reverse?: boolean;
+  toRight?: boolean;
   offset: number;
 }) {
   const order = [...FLEET.slice(offset), ...FLEET.slice(0, offset)];
 
   return (
-    <div
-      className="fleet-drift flex w-[200%]"
-      style={{
-        animationDuration: duration,
-        animationDirection: reverse ? "reverse" : "normal",
-      }}
-    >
-      {[0, 1].map((copy) => (
-        <div
-          key={copy}
-          className="flex w-1/2 shrink-0 items-center justify-around px-8"
-        >
-          {order.map((shape) => (
-            <div key={shape.id} className={height}>
-              <Shape shape={shape} />
-            </div>
-          ))}
-        </div>
-      ))}
+    <div className="[mask-image:linear-gradient(90deg,transparent,#000_20%,#000_80%,transparent)]">
+      <div
+        className="fleet-drift flex w-[200%]"
+        style={{
+          animationDuration: duration,
+          animationDirection: toRight ? "reverse" : "normal",
+        }}
+      >
+        {[0, 1].map((copy) => (
+          <div
+            key={copy}
+            className="flex w-1/2 shrink-0 items-center justify-around px-6"
+          >
+            {order.map((profile) => (
+              <div key={profile.id} className={height}>
+                <Shape profile={profile} flip={!toRight} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -157,10 +168,10 @@ export function FleetDrift() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-center gap-10 overflow-hidden text-sky-300/[0.07] [mask-image:linear-gradient(90deg,transparent,#000_18%,#000_82%,transparent)]"
+      className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-between overflow-hidden py-2 text-sky-300/[0.06] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.4)_24%,transparent_38%,transparent_62%,rgba(0,0,0,0.4)_76%,#000)]"
     >
-      <Lane height="h-16 sm:h-24" duration="150s" offset={0} />
-      <Lane height="h-10 sm:h-14" duration="110s" offset={3} reverse />
+      <Lane height="h-9 sm:h-12" duration="170s" offset={0} />
+      <Lane height="h-7 sm:h-10" duration="130s" offset={3} toRight />
     </div>
   );
 }
