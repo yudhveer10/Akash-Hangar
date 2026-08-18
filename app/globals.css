@@ -87,6 +87,22 @@
   }
 }
 
+/* The silhouette lanes behind the motto. The track holds two copies of the fleet, so
+   translating it exactly half its own width returns to the starting frame — any other
+   distance shows a seam. Duration and direction are set per lane at the call site. */
+@utility fleet-drift {
+  animation: fleet-drift 150s linear infinite;
+}
+
+@keyframes fleet-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -132,7 +148,8 @@
 
     /* Looping animations need stopping outright, not shortening: at 0.01ms an
        infinite animation restarts every frame instead of settling. */
-    .hud-sweep {
+    .hud-sweep,
+    .fleet-drift {
       animation: none !important;
     }
   }

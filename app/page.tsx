@@ -4,6 +4,7 @@ import { PHASES, PHASE_ORDER } from "@/components/three/environment/phases";
 import { AircraftCard } from "@/components/ui/AircraftCard";
 import { Brackets } from "@/components/ui/Brackets";
 import { ComingSoon } from "@/components/ui/ComingSoon";
+import { FleetDrift } from "@/components/ui/FleetDrift";
 import { Motto } from "@/components/ui/Motto";
 import { Reveal } from "@/components/ui/Reveal";
 import { getAllAircraft, getAircraftBySlug } from "@/lib/aircraft";
@@ -160,7 +161,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative pb-16">
+        <div className="relative isolate pb-16">
+          <FleetDrift />
           <Motto />
         </div>
       </section>

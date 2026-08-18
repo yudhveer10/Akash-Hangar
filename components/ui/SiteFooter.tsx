@@ -67,6 +67,16 @@ export function SiteFooter() {
 
         <hr className="my-8 border-white/[0.07]" />
         <Disclaimer />
+
+        <div className="mt-6 flex flex-col gap-1 border-t border-white/[0.05] pt-6 sm:flex-row sm:items-baseline sm:justify-between">
+          <p className="text-xs text-slate-500">
+            &copy; {new Date().getFullYear()} Akash Hangar. All rights reserved.
+          </p>
+          <p className="text-xs text-slate-600">
+            Applies to this site&rsquo;s original 3D geometry, code and writing.
+            Referenced facts remain the property of their sources.
+          </p>
+        </div>
       </div>
     </footer>
   );
