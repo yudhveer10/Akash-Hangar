@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { HeroViewer } from "@/components/three/HeroViewer";
-import { PHASES, PHASE_ORDER } from "@/components/three/environment/phases";
+import { HeroStage } from "@/components/three/HeroStage";
+import { PHASE_ORDER } from "@/components/three/environment/phases";
 import { AircraftCard } from "@/components/ui/AircraftCard";
 import { Brackets } from "@/components/ui/Brackets";
 import { ComingSoon } from "@/components/ui/ComingSoon";
 import { FleetDrift } from "@/components/ui/FleetDrift";
 import { Motto } from "@/components/ui/Motto";
+import { PhaseTile } from "@/components/ui/PhaseTile";
 import { Reveal } from "@/components/ui/Reveal";
 import { getAllAircraft, getAircraftBySlug } from "@/lib/aircraft";
 import { baseLocation, getAllBases, homeBaseOf } from "@/lib/bases";
@@ -13,30 +14,19 @@ import { modelExtent } from "@/lib/geometry";
 import { CONTACT_EMAIL } from "@/lib/site";
 import type { PhaseId } from "@/lib/types";
 
-/**
- * Sky colours for the time-of-day tiles.
- *
- * Dusk and night are read from the phase definitions the 3D scene actually uses, so
- * the tiles cannot drift away from what the viewer shows. Day is the odd one out by
- * design: a phase is a set of pulls applied to a landscape, and day pulls at nothing,
- * so its colour belongs to the landscape rather than to the phase.
- */
-const DAYLIGHT: [string, string] = ["#3f7cb8", "#c4dbef"];
-
-function skyFor(phase: PhaseId): [string, string] {
-  if (phase === "day") return DAYLIGHT;
-  return [PHASES[phase].sky.zenith, PHASES[phase].sky.horizon];
-}
-
 export default function HomePage() {
   const fleet = getAllAircraft();
   const featured = getAircraftBySlug("su-30mki") ?? fleet[0];
   const stations = getAllBases();
 
-  // The hero lands the aircraft at its own station, at the time of day that station
-  // opens on — the same pairing the aircraft page would give it.
+  // The hero lands the aircraft at its own station — but after dark, whatever hour
+  // that station opens on elsewhere. Night is where the airfield does the most work:
+  // the runway edge lighting, the threshold bars, the lit windows in the tower and
+  // the afterburner all read at night and none of them shows in flat daylight. The
+  // station's own `opensAt` still governs its aircraft page; this is the home page's
+  // shot, and the phase buttons on the card move it in one click.
   const heroBase = homeBaseOf(featured) ?? stations[0];
-  const heroPhase = heroBase.opensAt;
+  const heroPhase: PhaseId = "night";
 
   const partCount = fleet.reduce((n, a) => n + (a.annotations?.length ?? 0), 0);
   const landscapes = new Set(stations.map((s) => s.terrain)).size;
@@ -116,11 +106,12 @@ export default function HomePage() {
 
           <div className="card-sheen overflow-hidden rounded-2xl border border-white/10">
             <div className="bg-hangar relative aspect-[3/2]">
-              <HeroViewer
+              <HeroStage
                 geometry={featured.geometry}
                 extent={modelExtent(featured.geometry)}
                 base={heroBase}
                 opensAt={heroPhase}
+                label={featured.shortName}
               />
               <Brackets className="inset-3" />
 
@@ -281,28 +272,9 @@ export default function HomePage() {
 
             <Reveal delay={0.08}>
               <div className="grid grid-cols-3 gap-3">
-                {PHASE_ORDER.map((phase) => {
-                  const [zenith, horizon] = skyFor(phase);
-                  return (
-                    <div
-                      key={phase}
-                      className="card-sheen overflow-hidden rounded-xl border border-white/[0.08]"
-                    >
-                      <div
-                        className="relative h-24"
-                        style={{
-                          background: `linear-gradient(180deg, ${zenith} 0%, ${horizon} 100%)`,
-                        }}
-                      >
-                        <div className="absolute inset-x-0 bottom-0 h-6 bg-ink-950/80" />
-                        <div className="absolute inset-x-8 bottom-0 h-1.5 bg-slate-400/70" />
-                      </div>
-                      <p className="border-t border-white/[0.06] bg-ink-900/60 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-slate-400">
-                        {PHASES[phase].label}
-                      </p>
-                    </div>
-                  );
-                })}
+                {PHASE_ORDER.map((phase) => (
+                  <PhaseTile key={phase} phase={phase} />
+                ))}
               </div>
 
               <ul className="mt-4 flex flex-wrap gap-2">

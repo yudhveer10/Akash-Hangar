@@ -168,10 +168,10 @@ export function FleetDrift() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-between overflow-hidden py-2 text-sky-300/[0.06] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.4)_24%,transparent_38%,transparent_62%,rgba(0,0,0,0.4)_76%,#000)]"
+      className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-between overflow-hidden py-2 text-sky-300/[0.11] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.4)_24%,transparent_38%,transparent_62%,rgba(0,0,0,0.4)_76%,#000)]"
     >
-      <Lane height="h-9 sm:h-12" duration="170s" offset={0} />
-      <Lane height="h-7 sm:h-10" duration="130s" offset={3} toRight />
+      <Lane height="h-10 sm:h-14" duration="170s" offset={0} />
+      <Lane height="h-8 sm:h-11" duration="130s" offset={3} toRight />
     </div>
   );
 }

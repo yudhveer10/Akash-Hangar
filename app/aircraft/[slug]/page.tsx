@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AircraftViewer } from "@/components/three/AircraftViewer";
+import { AircraftStage } from "@/components/three/AircraftStage";
 import { SpecTable } from "@/components/ui/SpecTable";
 import { SourceList } from "@/components/ui/SourceList";
 import {
@@ -98,7 +98,7 @@ export default async function AircraftPage({ params }: Params) {
       </div>
 
       <div className="mx-auto max-w-6xl px-5 py-10">
-        <AircraftViewer aircraft={entry} glbUrl={glbUrl} />
+        <AircraftStage aircraft={entry} glbUrl={glbUrl} />
 
         <div className="mt-16 grid gap-14 lg:grid-cols-[1.4fr_1fr]">
           <div>

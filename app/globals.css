@@ -87,6 +87,46 @@
   }
 }
 
+/* Sequenced approach lighting, under the motto. Real airfields run a strobe inward
+   along the approach centreline — "the rabbit" — and one pulse travelling along a row
+   of lamps is the whole effect. Each lamp gets the same animation and its own delay,
+   set inline from its index, so the run is one keyframe rather than twenty. */
+@utility approach-lamp {
+  animation: approach-lamp 2.6s linear infinite;
+}
+
+@keyframes approach-lamp {
+  0%,
+  62% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  8% {
+    opacity: 1;
+    transform: scale(1.7);
+  }
+  26% {
+    opacity: 0.3;
+    transform: scale(1.1);
+  }
+}
+
+/* A band of light drawn slowly across a panel, the way a rotating beacon sweeps a
+   parked airframe. Used on the motto plate. */
+@utility plate-sweep {
+  animation: plate-sweep 9s ease-in-out infinite;
+}
+
+@keyframes plate-sweep {
+  0%,
+  100% {
+    transform: translateX(-130%);
+  }
+  50% {
+    transform: translateX(130%);
+  }
+}
+
 /* The silhouette lanes behind the motto. The track holds two copies of the fleet, so
    translating it exactly half its own width returns to the starting frame — any other
    distance shows a seam. Duration and direction are set per lane at the call site. */
@@ -149,7 +189,9 @@
     /* Looping animations need stopping outright, not shortening: at 0.01ms an
        infinite animation restarts every frame instead of settling. */
     .hud-sweep,
-    .fleet-drift {
+    .fleet-drift,
+    .approach-lamp,
+    .plate-sweep {
       animation: none !important;
     }
   }
